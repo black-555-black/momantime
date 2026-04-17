@@ -1,4 +1,4 @@
-<!-- VERSION: v1.6.2 (Strict Best Move) -->
+<!-- VERSION: v1.6.2 (Full Direction Fix) -->
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -80,7 +80,11 @@
     const container = document.getElementById('game-container'), trashCan = document.getElementById('trash-can');
     const COLS = 8, ROWS = 9;
     let pieces = [], activeDrag = null, draggedPieceId = null;
-    const DIRS_4 = [[0, -1],,, [-1, 0]], DIAG_4 = [[1, -1],, [-1, 1], [-1, -1]], HORSE_8 = [[1, -2], [2, -1],,, [-1, 2], [-2, 1], [-2, -1], [-1, -2]];
+
+    // 方向定義の修正（上下左右すべて網羅）
+    const DIRS_4 = [[0, -1], [0, 1], [1, 0], [-1, 0]]; 
+    const DIAG_4 = [[1, -1], [1, 1], [-1, 1], [-1, -1]];
+    const HORSE_8 = [[1, -2], [2, -1], [2, 1], [1, 2], [-1, 2], [-2, 1], [-2, -1], [-1, -2]];
 
     function init() {
         for (let y = 0; y < ROWS; y++) {
