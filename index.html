@@ -1,9 +1,10 @@
+<!-- VERSION: v1.6.2 (Design Unified) -->
 <!DOCTYPE html>
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>シャンチー・シミュレーター v1.6.1-OriginalLogic</title>
+    <title>シャンチー・シミュレーター v1.6.2</title>
     <style>
         :root {
             --board-bg: #f5deb3;
@@ -13,34 +14,80 @@
             --red-piece: radial-gradient(circle at 30% 30%, #e74c3c, #96281b);
         }
         html, body { position: fixed; width: 100%; height: 100%; overflow: hidden; overscroll-behavior: none; }
-        body { display: flex; flex-direction: column; align-items: center; justify-content: center; background-color: #2c3e50; margin: 0; padding: 10px; font-family: sans-serif; touch-action: none; color: white; }
-        #game-container { width: 90vw; max-width: 360px; aspect-ratio: 360 / 400; position: relative; background-color: var(--board-bg); border: 4px double var(--line-color); box-shadow: 0 10px 30px rgba(0,0,0,0.6); box-sizing: border-box; }
-        #board-grid { position: absolute; top: 5%; left: 5%; right: 5%; bottom: 5%; background-image: linear-gradient(var(--line-color) 1px, transparent 1px), linear-gradient(90deg, var(--line-color) 1px, transparent 1px); background-size: 100% 12.5%, 14.2857% 100%; border-right: 1px solid var(--line-color); border-bottom: 1px solid var(--line-color); pointer-events: none; -webkit-mask-image: linear-gradient(to bottom, black 37.5%, transparent 37.5%, transparent 50%, black 50%); mask-image: linear-gradient(to bottom, black 37.5%, transparent 37.5%, transparent 50%, black 50%); }
+        body { 
+            display: flex; flex-direction: column; align-items: center; justify-content: center; 
+            background-color: #2c3e50; margin: 0; padding: 10px; font-family: sans-serif; 
+            touch-action: none; color: white; 
+        }
+        
+        #game-container { 
+            width: 90vw; max-width: 360px; aspect-ratio: 360 / 400; 
+            position: relative; background-color: var(--board-bg); 
+            border: 4px double var(--line-color); box-shadow: 0 10px 30px rgba(0,0,0,0.6); 
+            box-sizing: border-box;
+        }
+        #board-grid { 
+            position: absolute; top: 5%; left: 5%; right: 5%; bottom: 5%;
+            background-image: linear-gradient(var(--line-color) 1px, transparent 1px), linear-gradient(90deg, var(--line-color) 1px, transparent 1px);
+            background-size: 100% 12.5%, 14.2857% 100%; border-right: 1px solid var(--line-color); border-bottom: 1px solid var(--line-color);
+            pointer-events: none;
+            -webkit-mask-image: linear-gradient(to bottom, black 37.5%, transparent 37.5%, transparent 50%, black 50%);
+            mask-image: linear-gradient(to bottom, black 37.5%, transparent 37.5%, transparent 50%, black 50%);
+        }
         #board-lines-h, #board-outline { position: absolute; top: 5%; left: 5%; right: 5%; bottom: 5%; pointer-events: none; }
         #board-lines-h { background-image: linear-gradient(var(--line-color) 1px, transparent 1px); background-size: 100% 12.5%; }
         #board-outline { border-left: 1px solid var(--line-color); border-right: 1px solid var(--line-color); }
         #river { position: absolute; top: 38.75%; left: 5%; right: 5%; height: 11.25%; background-color: var(--river-bg); pointer-events: none; }
+        
         .point { position: absolute; width: 6px; height: 6px; background-color: var(--line-color); border-radius: 50%; transform: translate(-50%, -50%); opacity: 0.4; z-index: 2; }
-        .piece-ui { width: 34px; height: 34px; border-radius: 50%; display: flex; justify-content: center; align-items: center; color: white; font-weight: 900; font-size: 18px; text-shadow: 1px 1px 2px rgba(0,0,0,0.8); box-shadow: 0 4px 8px rgba(0,0,0,0.4); user-select: none; -webkit-user-select: none; }
+        
+        /* 駒のデザイン（盤上・パレット共通） */
+        .piece-ui { 
+            width: 34px; height: 34px; border-radius: 50%; 
+            display: flex; justify-content: center; align-items: center; 
+            color: white; font-weight: 900; font-size: 18px; 
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.4); 
+            user-select: none; -webkit-user-select: none;
+        }
         .piece-ui.blue { background: var(--blue-piece); }
         .piece-ui.red { background: var(--red-piece); }
+        
+        /* 盤上の駒固有の設定 */
         .piece { position: absolute; transform: translate(-50%, -50%); cursor: grab; z-index: 10; touch-action: none; }
+        
         .danger-piece { animation: piece-danger-blink 0.8s infinite alternate; border: 2px solid #ff4444; }
         @keyframes piece-danger-blink { from { box-shadow: 0 0 5px #f00; } to { box-shadow: 0 0 25px #f00; transform: translate(-50%, -50%) scale(1.08); } }
+
         .marker { border-radius: 50%; position: absolute; transform: translate(-50%, -50%); pointer-events: none; z-index: 15; border: 2px solid #fff; }
         .marker.danger { width: 22px; height: 22px; background-color: rgba(255, 68, 68, 0.8); }
         .marker.safe { width: 22px; height: 22px; background-color: rgba(255, 235, 59, 0.8); }
-        .marker.best { width: 38px; height: 38px; background-color: rgba(76, 175, 80, 0.4); border: 3px solid #4caf50; animation: pulse-best 1.5s infinite; }
+        .marker.best { 
+            width: 38px; height: 38px; background-color: rgba(76, 175, 80, 0.4); 
+            border: 3px solid #4caf50; box-shadow: 0 0 15px #4caf50;
+            animation: pulse-best 1.5s infinite;
+        }
         @keyframes pulse-best { 0%, 100% { transform: translate(-50%, -50%) scale(0.9); } 50% { transform: translate(-50%, -50%) scale(1.1); } }
+
         #palette { margin-top: 15px; display: flex; gap: 6px; background: rgba(255,255,255,0.1); padding: 12px; border-radius: 10px; flex-wrap: wrap; justify-content: center; }
-        .palette-item { cursor: pointer; width: 38px; height: 38px; font-size: 12px; touch-action: none; }
-        .reset-btn { background: #e74c3c; font-size: 20px; width: 38px; height: 38px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; color: white; border: 2px solid #c0392b; }
+        .palette-item { cursor: pointer; touch-action: none; }
+        
+        .reset-btn { 
+            background: #e74c3c; font-size: 20px; width: 34px; height: 34px; 
+            border-radius: 50%; display: flex; align-items: center; justify-content: center; 
+            cursor: pointer; color: white; border: 2px solid #c0392b; 
+        }
+        .reset-btn.drag-over { background: #ff0000; transform: scale(1.2); }
     </style>
 </head>
 <body>
-<div id="game-container"><div id="board-grid"></div><div id="board-lines-h"></div><div id="board-outline"></div><div id="river"></div></div>
+
+<div id="game-container">
+    <div id="board-grid"></div><div id="board-lines-h"></div><div id="board-outline"></div><div id="river"></div>
+</div>
+
 <div id="palette">
-    <div class="palette-item piece-ui blue" data-side="blue" data-type="車">自車</div>
+    <div class="palette-item piece-ui blue" data-side="blue" data-type="車">車</div>
     <div class="palette-item piece-ui red" data-side="red" data-type="卒">卒</div>
     <div class="palette-item piece-ui red" data-side="red" data-type="士">士</div>
     <div class="palette-item piece-ui red" data-side="red" data-type="馬">馬</div>
@@ -50,15 +97,16 @@
     <div class="palette-item piece-ui red" data-side="red" data-type="砲">砲</div>
     <div id="trash-can" class="reset-btn">🗑️</div>
 </div>
+
 <script>
     const container = document.getElementById('game-container');
     const trashCan = document.getElementById('trash-can');
     const COLS = 8, ROWS = 9;
     let pieces = [], activeDrag = null, draggedPieceId = null;
 
-    const DIRS_4 = [[0, -1], [0, 1], [1, 0], [-1, 0]];
-    const DIAG_4 = [[1, -1], [1, 1], [-1, 1], [-1, -1]];
-    const HORSE_8 = [[1, -2], [2, -1], [2, 1], [1, 2], [-1, 2], [-2, 1], [-2, -1], [-1, -2]];
+    const DIRS_4 = [[0, -1],,, [-1, 0]];
+    const DIAG_4 = [[1, -1],, [-1, 1], [-1, -1]];
+    const HORSE_8 = [[1, -2], [2, -1],,, [-1, 2], [-2, 1], [-2, -1], [-1, -2]];
 
     function init() {
         for (let y = 0; y < ROWS; y++) {
@@ -107,6 +155,9 @@
         if (!activeDrag) return;
         activeDrag.element.style.left = e.clientX + 'px';
         activeDrag.element.style.top = e.clientY + 'px';
+        const tRect = trashCan.getBoundingClientRect();
+        if (e.clientX >= tRect.left && e.clientX <= tRect.right && e.clientY >= tRect.top && e.clientY <= tRect.bottom) trashCan.classList.add('drag-over');
+        else trashCan.classList.remove('drag-over');
     }
 
     function handleEnd(e) {
@@ -129,7 +180,7 @@
         activeDrag = null; draggedPieceId = null; render();
     }
 
-    function resetBoard() { if(confirm("RESET?")) { pieces = []; render(); } }
+    function resetBoard() { if(confirm("盤面をリセットしますか？")) { pieces = []; render(); } }
 
     function getAttackMap(currentPieces) {
         const attackMap = new Set();
@@ -171,18 +222,14 @@
                 let nx=car.x+dx*i, ny=car.y+dy*i; if(nx<0||nx>=COLS||ny<0||ny>=ROWS) break;
                 const target = pieces.find(p => p.x === nx && p.y === ny);
                 if (target?.side === 'blue') break;
-                
                 const future = pieces.map(p => p.side === 'blue' ? { ...p, x: nx, y: ny } : p);
                 const amap = getAttackMap(future);
                 const isSafe = !amap.has(`${nx},${ny}`);
-
                 let score = 0;
                 if (isSafe) {
                     score += 10;
-                    if (target?.side === 'red') {
-                        score += 1000;
-                    } else {
-                        // 未来の全方位探索（安全な狙い）
+                    if (target?.side === 'red') { score += 1000; } 
+                    else {
                         DIRS_4.forEach(([adx, ady]) => {
                             for (let j = 1; j < 10; j++) {
                                 let ax=nx+adx*j, ay=ny+ady*j; if(ax<0||ax>=COLS||ay<0||ay>=ROWS) break;
