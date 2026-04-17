@@ -1,4 +1,4 @@
-<!-- VERSION: v1.6.2 (Full Direction Fix) -->
+<!-- VERSION: v1.6.2 (Marker Transparency Adjusted) -->
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -38,6 +38,7 @@
         #board-outline { border-left: 1px solid var(--line-color); border-right: 1px solid var(--line-color); }
         #river { position: absolute; top: 38.75%; left: 5%; right: 5%; height: 11.25%; background-color: var(--river-bg); pointer-events: none; }
         .point { position: absolute; width: 6px; height: 6px; background-color: var(--line-color); border-radius: 50%; transform: translate(-50%, -50%); opacity: 0.4; z-index: 2; }
+        
         .piece-ui { 
             width: 34px; height: 34px; border-radius: 50%; display: flex; justify-content: center; align-items: center; 
             color: white; font-weight: 900; font-size: 18px; text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
@@ -45,11 +46,14 @@
         }
         .piece-ui.blue { background: var(--blue-piece); }
         .piece-ui.red { background: var(--red-piece); }
-        .piece { position: absolute; transform: translate(-50%, -50%); cursor: grab; z-index: 10; touch-action: none; }
+        
+        .piece { position: absolute; transform: translate(-50%, -50%); cursor: grab; z-index: 20; touch-action: none; }
         .danger-piece { animation: piece-danger-blink 0.8s infinite alternate; border: 2px solid #ff4444; }
         @keyframes piece-danger-blink { from { box-shadow: 0 0 5px #f00; } to { box-shadow: 0 0 25px #f00; transform: translate(-50%, -50%) scale(1.08); } }
+        
+        /* マーカーのデザイン設定（修正済） */
         .marker { border-radius: 50%; position: absolute; transform: translate(-50%, -50%); pointer-events: none; z-index: 15; border: 2px solid #fff; }
-        .marker.danger { width: 22px; height: 22px; background-color: rgba(255, 68, 68, 0.8); }
+        .marker.danger { width: 34px; height: 34px; background-color: rgba(255, 0, 0, 0.2); border: 2px solid #ff0000; box-shadow: 0 0 10px #f00; }
         .marker.safe { width: 22px; height: 22px; background-color: rgba(255, 235, 59, 0.8); }
         .marker.best { 
             width: 38px; height: 38px; background-color: rgba(76, 175, 80, 0.4); 
@@ -57,6 +61,7 @@
             animation: pulse-best 1.5s infinite;
         }
         @keyframes pulse-best { 0%, 100% { transform: translate(-50%, -50%) scale(0.9); } 50% { transform: translate(-50%, -50%) scale(1.1); } }
+        
         #palette { margin-top: 15px; display: flex; gap: 6px; background: rgba(255,255,255,0.1); padding: 12px; border-radius: 10px; flex-wrap: wrap; justify-content: center; }
         .palette-item { cursor: pointer; touch-action: none; }
         .reset-btn { background: #e74c3c; font-size: 20px; width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; color: white; border: 2px solid #c0392b; }
@@ -80,8 +85,6 @@
     const container = document.getElementById('game-container'), trashCan = document.getElementById('trash-can');
     const COLS = 8, ROWS = 9;
     let pieces = [], activeDrag = null, draggedPieceId = null;
-
-    // 方向定義の修正（上下左右すべて網羅）
     const DIRS_4 = [[0, -1], [0, 1], [1, 0], [-1, 0]]; 
     const DIAG_4 = [[1, -1], [1, 1], [-1, 1], [-1, -1]];
     const HORSE_8 = [[1, -2], [2, -1], [2, 1], [1, 2], [-1, 2], [-2, 1], [-2, -1], [-1, -2]];
