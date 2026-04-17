@@ -1,4 +1,4 @@
-<!-- VERSION: v1.6.1-MobileFixed -->
+<!-- VERSION: v1.6.1-MobileScrollFixed -->
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -13,10 +13,18 @@
             --blue-piece: radial-gradient(circle at 30% 30%, #4a90e2, #1a5a9e);
             --red-piece: radial-gradient(circle at 30% 30%, #e74c3c, #96281b);
         }
+        /* 【修正】スクロールを完全に防止するCSS */
+        html, body { 
+            position: fixed; 
+            width: 100%; 
+            height: 100%; 
+            overflow: hidden; 
+            overscroll-behavior: none;
+        }
         body { 
             display: flex; flex-direction: column; align-items: center; background-color: #2c3e50; 
             margin: 0; padding: 10px; font-family: sans-serif; touch-action: none; 
-            min-height: 100vh; color: white; overflow: hidden;
+            color: white;
         }
         
         #score-panel {
@@ -85,7 +93,6 @@
             cursor: pointer; color: white; border: 2px solid #c0392b; 
             box-shadow: 0 4px 8px rgba(0,0,0,0.3);
         }
-        .reset-btn.drag-over { background: #ff0000; transform: scale(1.2); box-shadow: 0 0 15px #f00; }
     </style>
 </head>
 <body>
@@ -145,12 +152,28 @@
     }
 
     function setupTouchEvents() {
+        // パレットからのドラッグ開始
         document.querySelectorAll('.palette-item').forEach(el => {
             el.addEventListener('touchstart', (e) => handleDragStart(e, el.dataset.side, el.dataset.type), {passive: false});
         });
+        
         trashCan.addEventListener('click', resetBoard);
-        window.addEventListener('touchmove', handleDragMove, {passive: false});
-        window.addEventListener('touchend', handleDragEnd, {passive: false});
+
+        // 全体でのタッチ挙動制御
+        window.addEventListener('touchmove', (e) => {
+            if (activeDrag) {
+                handleDragMove(e);
+            }
+        }, {passive: false});
+
+        window.addEventListener('touchend', (e) => {
+            if (activeDrag) {
+                handleDragEnd(e);
+            }
+        }, {passive: false});
+
+        // 画面全体のスクロール防止を確実に
+        document.addEventListener('touchmove', (e) => { e.preventDefault(); }, {passive: false});
     }
 
     function handleDragStart(e, side, type, id = null) {
@@ -187,7 +210,6 @@
         activeDrag.element.style.left = touch.clientX + 'px';
         activeDrag.element.style.top = touch.clientY + 'px';
         
-        // ゴミ箱強調
         const trashRect = trashCan.getBoundingClientRect();
         if (touch.clientX >= trashRect.left && touch.clientX <= trashRect.right &&
             touch.clientY >= trashRect.top && touch.clientY <= trashRect.bottom) {
@@ -206,12 +228,10 @@
         activeDrag.element.remove();
         trashCan.classList.remove('drag-over');
 
-        // ゴミ箱判定
         if (touch.clientX >= trashRect.left && touch.clientX <= trashRect.right &&
             touch.clientY >= trashRect.top && touch.clientY <= trashRect.bottom) {
             if (activeDrag.id) pieces = pieces.filter(p => p.id !== activeDrag.id);
         } else {
-            // 盤面判定
             const x = Math.round((((touch.clientX - rect.left) / rect.width) - 0.05) / 0.9 * (COLS - 1));
             const y = Math.round((((touch.clientY - rect.top) / rect.height) - 0.05) / 0.9 * (ROWS - 1));
 
