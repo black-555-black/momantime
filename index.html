@@ -1,4 +1,4 @@
-<!-- VERSION: v1.6.2 (Design Unified) -->
+<!-- VERSION: v1.6.2 (Strict Best Move) -->
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -19,7 +19,6 @@
             background-color: #2c3e50; margin: 0; padding: 10px; font-family: sans-serif; 
             touch-action: none; color: white; 
         }
-        
         #game-container { 
             width: 90vw; max-width: 360px; aspect-ratio: 360 / 400; 
             position: relative; background-color: var(--board-bg); 
@@ -38,27 +37,17 @@
         #board-lines-h { background-image: linear-gradient(var(--line-color) 1px, transparent 1px); background-size: 100% 12.5%; }
         #board-outline { border-left: 1px solid var(--line-color); border-right: 1px solid var(--line-color); }
         #river { position: absolute; top: 38.75%; left: 5%; right: 5%; height: 11.25%; background-color: var(--river-bg); pointer-events: none; }
-        
         .point { position: absolute; width: 6px; height: 6px; background-color: var(--line-color); border-radius: 50%; transform: translate(-50%, -50%); opacity: 0.4; z-index: 2; }
-        
-        /* 駒のデザイン（盤上・パレット共通） */
         .piece-ui { 
-            width: 34px; height: 34px; border-radius: 50%; 
-            display: flex; justify-content: center; align-items: center; 
-            color: white; font-weight: 900; font-size: 18px; 
-            text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
-            box-shadow: 0 4px 8px rgba(0,0,0,0.4); 
-            user-select: none; -webkit-user-select: none;
+            width: 34px; height: 34px; border-radius: 50%; display: flex; justify-content: center; align-items: center; 
+            color: white; font-weight: 900; font-size: 18px; text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.4); user-select: none; -webkit-user-select: none;
         }
         .piece-ui.blue { background: var(--blue-piece); }
         .piece-ui.red { background: var(--red-piece); }
-        
-        /* 盤上の駒固有の設定 */
         .piece { position: absolute; transform: translate(-50%, -50%); cursor: grab; z-index: 10; touch-action: none; }
-        
         .danger-piece { animation: piece-danger-blink 0.8s infinite alternate; border: 2px solid #ff4444; }
         @keyframes piece-danger-blink { from { box-shadow: 0 0 5px #f00; } to { box-shadow: 0 0 25px #f00; transform: translate(-50%, -50%) scale(1.08); } }
-
         .marker { border-radius: 50%; position: absolute; transform: translate(-50%, -50%); pointer-events: none; z-index: 15; border: 2px solid #fff; }
         .marker.danger { width: 22px; height: 22px; background-color: rgba(255, 68, 68, 0.8); }
         .marker.safe { width: 22px; height: 22px; background-color: rgba(255, 235, 59, 0.8); }
@@ -68,24 +57,14 @@
             animation: pulse-best 1.5s infinite;
         }
         @keyframes pulse-best { 0%, 100% { transform: translate(-50%, -50%) scale(0.9); } 50% { transform: translate(-50%, -50%) scale(1.1); } }
-
         #palette { margin-top: 15px; display: flex; gap: 6px; background: rgba(255,255,255,0.1); padding: 12px; border-radius: 10px; flex-wrap: wrap; justify-content: center; }
         .palette-item { cursor: pointer; touch-action: none; }
-        
-        .reset-btn { 
-            background: #e74c3c; font-size: 20px; width: 34px; height: 34px; 
-            border-radius: 50%; display: flex; align-items: center; justify-content: center; 
-            cursor: pointer; color: white; border: 2px solid #c0392b; 
-        }
+        .reset-btn { background: #e74c3c; font-size: 20px; width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; color: white; border: 2px solid #c0392b; }
         .reset-btn.drag-over { background: #ff0000; transform: scale(1.2); }
     </style>
 </head>
 <body>
-
-<div id="game-container">
-    <div id="board-grid"></div><div id="board-lines-h"></div><div id="board-outline"></div><div id="river"></div>
-</div>
-
+<div id="game-container"><div id="board-grid"></div><div id="board-lines-h"></div><div id="board-outline"></div><div id="river"></div></div>
 <div id="palette">
     <div class="palette-item piece-ui blue" data-side="blue" data-type="車">車</div>
     <div class="palette-item piece-ui red" data-side="red" data-type="卒">卒</div>
@@ -97,16 +76,11 @@
     <div class="palette-item piece-ui red" data-side="red" data-type="砲">砲</div>
     <div id="trash-can" class="reset-btn">🗑️</div>
 </div>
-
 <script>
-    const container = document.getElementById('game-container');
-    const trashCan = document.getElementById('trash-can');
+    const container = document.getElementById('game-container'), trashCan = document.getElementById('trash-can');
     const COLS = 8, ROWS = 9;
     let pieces = [], activeDrag = null, draggedPieceId = null;
-
-    const DIRS_4 = [[0, -1],,, [-1, 0]];
-    const DIAG_4 = [[1, -1],, [-1, 1], [-1, -1]];
-    const HORSE_8 = [[1, -2], [2, -1],,, [-1, 2], [-2, 1], [-2, -1], [-1, -2]];
+    const DIRS_4 = [[0, -1],,, [-1, 0]], DIAG_4 = [[1, -1],, [-1, 1], [-1, -1]], HORSE_8 = [[1, -2], [2, -1],,, [-1, 2], [-2, 1], [-2, -1], [-1, -2]];
 
     function init() {
         for (let y = 0; y < ROWS; y++) {
@@ -121,40 +95,29 @@
     }
 
     function setupEvents() {
-        document.querySelectorAll('.palette-item').forEach(el => {
-            el.onpointerdown = (e) => handleStart(e, el.dataset.side, el.dataset.type);
-        });
+        document.querySelectorAll('.palette-item').forEach(el => { el.onpointerdown = (e) => handleStart(e, el.dataset.side, el.dataset.type); });
         trashCan.onclick = resetBoard;
-        window.onpointermove = handleMove;
-        window.onpointerup = handleEnd;
+        window.onpointermove = handleMove; window.onpointerup = handleEnd;
     }
 
     function handleStart(e, side, type, id = null) {
-        e.preventDefault();
-        draggedPieceId = id;
+        e.preventDefault(); draggedPieceId = id;
         const pData = pieces.find(p => p.id === id);
-        activeDrag = { 
-            side, type, id, 
-            startX: pData ? pData.x : -1, startY: pData ? pData.y : -1,
-            element: createGhost(type, side, e.clientX, e.clientY)
-        };
+        activeDrag = { side, type, id, startX: pData ? pData.x : -1, startY: pData ? pData.y : -1, element: createGhost(type, side, e.clientX, e.clientY) };
         render();
     }
 
     function createGhost(type, side, x, y) {
-        const ghost = document.createElement('div');
-        ghost.className = `piece-ui ${side}`; ghost.innerText = type;
+        const ghost = document.createElement('div'); ghost.className = `piece-ui ${side}`; ghost.innerText = type;
         ghost.style.position = 'fixed'; ghost.style.left = x + 'px'; ghost.style.top = y + 'px';
         ghost.style.transform = 'translate(-50%, -50%) scale(1.2)'; ghost.style.opacity = '0.8';
         ghost.style.zIndex = '1000'; ghost.style.pointerEvents = 'none';
-        document.body.appendChild(ghost);
-        return ghost;
+        document.body.appendChild(ghost); return ghost;
     }
 
     function handleMove(e) {
         if (!activeDrag) return;
-        activeDrag.element.style.left = e.clientX + 'px';
-        activeDrag.element.style.top = e.clientY + 'px';
+        activeDrag.element.style.left = e.clientX + 'px'; activeDrag.element.style.top = e.clientY + 'px';
         const tRect = trashCan.getBoundingClientRect();
         if (e.clientX >= tRect.left && e.clientX <= tRect.right && e.clientY >= tRect.top && e.clientY <= tRect.bottom) trashCan.classList.add('drag-over');
         else trashCan.classList.remove('drag-over');
@@ -163,7 +126,7 @@
     function handleEnd(e) {
         if (!activeDrag) return;
         const rect = container.getBoundingClientRect(), tRect = trashCan.getBoundingClientRect();
-        activeDrag.element.remove();
+        activeDrag.element.remove(); trashCan.classList.remove('drag-over');
         if (e.clientX >= tRect.left && e.clientX <= tRect.right && e.clientY >= tRect.top && e.clientY <= tRect.bottom) {
             if (activeDrag.id) pieces = pieces.filter(p => p.id !== activeDrag.id);
         } else {
@@ -205,8 +168,7 @@
         const myCar = pieces.find(p => p.side === 'blue');
         pieces.forEach(p => {
             if (p.id === draggedPieceId) return;
-            const el = document.createElement('div');
-            el.className = `piece piece-ui ${p.side}`;
+            const el = document.createElement('div'); el.className = `piece piece-ui ${p.side}`;
             if (p.side === 'blue' && attackMap.has(`${p.x},${p.y}`)) el.classList.add('danger-piece');
             el.innerText = p.type; el.style.left = `${5 + (p.x/7)*90}%`; el.style.top = `${5 + (p.y/8)*90}%`;
             el.onpointerdown = (e) => handleStart(e, p.side, p.type, p.id);
@@ -223,8 +185,7 @@
                 const target = pieces.find(p => p.x === nx && p.y === ny);
                 if (target?.side === 'blue') break;
                 const future = pieces.map(p => p.side === 'blue' ? { ...p, x: nx, y: ny } : p);
-                const amap = getAttackMap(future);
-                const isSafe = !amap.has(`${nx},${ny}`);
+                const amap = getAttackMap(future); const isSafe = !amap.has(`${nx},${ny}`);
                 let score = 0;
                 if (isSafe) {
                     score += 10;
@@ -234,13 +195,11 @@
                             for (let j = 1; j < 10; j++) {
                                 let ax=nx+adx*j, ay=ny+ady*j; if(ax<0||ax>=COLS||ay<0||ay>=ROWS) break;
                                 const t = future.find(p => p.x === ax && p.y === ay);
-                                if (t) {
-                                    if (t.side === 'red') {
-                                        const scoreBoard = future.map(p => p.side === 'blue' ? { ...p, x: ax, y: ay } : p);
-                                        if (!getAttackMap(scoreBoard).has(`${ax},${ay}`)) score += 100;
-                                    }
+                                if (t && t.side === 'red') {
+                                    if (!getAttackMap(future.map(p => p.side === 'blue' ? { ...p, x: ax, y: ay } : p)).has(`${ax},${ay}`)) score += 100;
                                     break;
                                 }
+                                if (t) break;
                             }
                         });
                     }
@@ -253,7 +212,8 @@
         const maxS = safeCands.length ? Math.max(...safeCands.map(c => c.score)) : 0;
         cands.forEach(c => {
             const m = document.createElement('div');
-            m.className = `marker ${c.isDanger ? 'danger' : (c.score === maxS && maxS > 0 ? 'best' : 'safe')}`;
+            let isBest = !c.isDanger && c.score >= 100 && c.score === maxS;
+            m.className = `marker ${c.isDanger ? 'danger' : (isBest ? 'best' : 'safe')}`;
             m.style.left = `${5 + (c.x/7)*90}%`; m.style.top = `${5 + (c.y/8)*90}%`;
             container.appendChild(m);
         });
