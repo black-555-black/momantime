@@ -1,0 +1,322 @@
+<!-- VERSION: v1.6.1 (High Visibility Only) -->
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>シャンチー・シミュレーター v1.6.1</title>
+    <style>
+        :root {
+            --board-bg: #f5deb3;
+            --river-bg: rgba(100, 180, 255, 0.3);
+            --line-color: #5d4037;
+            --blue-piece: radial-gradient(circle at 30% 30%, #4a90e2, #1a5a9e);
+            --red-piece: radial-gradient(circle at 30% 30%, #e74c3c, #96281b);
+        }
+        body { display: flex; flex-direction: column; align-items: center; background-color: #2c3e50; margin: 0; padding: 10px; font-family: sans-serif; touch-action: manipulation; min-height: 100vh; color: white; }
+        
+        #score-panel {
+            width: 90vw; max-width: 360px; background: rgba(0, 0, 0, 0.7);
+            padding: 12px; border-radius: 8px; margin-bottom: 10px;
+            display: flex; justify-content: space-between; align-items: center;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5); border: 1px solid #444;
+        }
+        .score-item { text-align: center; flex: 1; }
+        .score-value { font-size: 28px; font-weight: bold; color: #4caf50; }
+        .score-label { font-size: 11px; opacity: 0.7; letter-spacing: 1px; }
+
+        #game-container { 
+            width: 90vw; max-width: 360px; aspect-ratio: 360 / 400; 
+            position: relative; background-color: var(--board-bg); 
+            border: 4px double var(--line-color); box-shadow: 0 10px 30px rgba(0,0,0,0.6); 
+            box-sizing: border-box;
+        }
+        #board-grid { 
+            position: absolute; top: 5%; left: 5%; right: 5%; bottom: 5%;
+            background-image: linear-gradient(var(--line-color) 1px, transparent 1px), linear-gradient(90deg, var(--line-color) 1px, transparent 1px);
+            background-size: 100% 12.5%, 14.2857% 100%; border-right: 1px solid var(--line-color); border-bottom: 1px solid var(--line-color);
+            pointer-events: none;
+            -webkit-mask-image: linear-gradient(to bottom, black 37.5%, transparent 37.5%, transparent 50%, black 50%);
+            mask-image: linear-gradient(to bottom, black 37.5%, transparent 37.5%, transparent 50%, black 50%);
+        }
+        #board-lines-h { position: absolute; top: 5%; left: 5%; right: 5%; bottom: 5%; background-image: linear-gradient(var(--line-color) 1px, transparent 1px); background-size: 100% 12.5%; pointer-events: none; }
+        #board-outline { position: absolute; top: 5%; left: 5%; right: 5%; bottom: 5%; border-left: 1px solid var(--line-color); border-right: 1px solid var(--line-color); pointer-events: none; }
+        #river { position: absolute; top: 38.75%; left: 5%; right: 5%; height: 11.25%; background-color: var(--river-bg); pointer-events: none; }
+        
+        .point { position: absolute; width: 6px; height: 6px; background-color: var(--line-color); border-radius: 50%; transform: translate(-50%, -50%); opacity: 0.4; z-index: 2; }
+        
+        /* 【変更箇所】駒の文字を見やすくするためのスタイル追加 */
+        .piece-ui { 
+            width: 34px; height: 34px; border-radius: 50%; 
+            display: flex; justify-content: center; align-items: center; 
+            color: white; 
+            font-weight: 900; /* 太字を最大に */
+            font-size: 18px; /* 文字を大きく */
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.8); /* 文字に影（縁取り効果） */
+            box-shadow: 0 4px 8px rgba(0,0,0,0.4); user-select: none; transition: transform 0.2s; 
+        }
+        
+        .piece-ui.blue { background: var(--blue-piece); }
+        .piece-ui.red { background: var(--red-piece); }
+        .piece { position: absolute; transform: translate(-50%, -50%); cursor: grab; z-index: 10; }
+        
+        .danger-piece { animation: piece-danger-blink 0.8s infinite alternate; border: 2px solid #ff4444; box-sizing: border-box; }
+        @keyframes piece-danger-blink { from { box-shadow: 0 0 5px #f00; } to { box-shadow: 0 0 25px #f00; transform: translate(-50%, -50%) scale(1.08); } }
+
+        .marker { border-radius: 50%; position: absolute; transform: translate(-50%, -50%); pointer-events: none; z-index: 15; border: 2px solid #fff; }
+        .marker.danger { width: 22px; height: 22px; background-color: rgba(255, 68, 68, 0.8); animation: blink 1s infinite; }
+        .marker.safe { width: 22px; height: 22px; background-color: rgba(255, 235, 59, 0.8); }
+        .marker.best { 
+            width: 38px; height: 38px; background-color: rgba(76, 175, 80, 0.4); 
+            border: 3px solid #4caf50; box-shadow: 0 0 15px #4caf50;
+            animation: pulse-best 1.5s infinite;
+        }
+
+        @keyframes blink { 0%, 100% { opacity: 0.5; } 50% { opacity: 1; } }
+        @keyframes pulse-best { 0%, 100% { transform: translate(-50%, -50%) scale(0.9); } 50% { transform: translate(-50%, -50%) scale(1.1); } }
+
+        #palette { margin-top: 15px; display: flex; gap: 6px; background: rgba(255,255,255,0.1); padding: 12px; border-radius: 10px; flex-wrap: wrap; justify-content: center; max-width: 420px; }
+        .palette-item { cursor: pointer; width: 38px; height: 38px; font-size: 12px; }
+        
+        .reset-btn { 
+            background: #e74c3c; font-size: 20px; width: 38px; height: 38px; 
+            border-radius: 50%; display: flex; align-items: center; justify-content: center; 
+            cursor: pointer; color: white; border: 2px solid #c0392b; 
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        }
+        .reset-btn.drag-over { background: #ff0000; transform: scale(1.2); box-shadow: 0 0 15px #f00; }
+    </style>
+</head>
+<body>
+
+<div id="score-panel">
+    <div class="score-item">
+        <div class="score-label">BEST MOVE SCORE</div>
+        <div id="best-score" class="score-value">0</div>
+    </div>
+    <div class="score-item">
+        <div class="score-label">CAR STATUS</div>
+        <div id="status-text" style="font-size: 13px; font-weight: bold; color: #ffeb3b;">Ready</div>
+    </div>
+</div>
+
+<div id="game-container" ondrop="dropToBoard(event)" ondragover="allowDrop(event)">
+    <div id="board-grid"></div><div id="board-lines-h"></div><div id="board-outline"></div><div id="river"></div>
+</div>
+
+<div id="palette">
+    <div class="palette-item piece-ui blue" draggable="true" ondragstart="dragStart(event, 'blue', '車')">自車</div>
+    <div class="palette-item piece-ui red" draggable="true" ondragstart="dragStart(event, 'red', '卒')">卒</div>
+    <div class="palette-item piece-ui red" draggable="true" ondragstart="dragStart(event, 'red', '士')">士</div>
+    <div class="palette-item piece-ui red" draggable="true" ondragstart="dragStart(event, 'red', '馬')">馬</div>
+    <div class="palette-item piece-ui red" draggable="true" ondragstart="dragStart(event, 'red', '象')">象</div>
+    <div class="palette-item piece-ui red" draggable="true" ondragstart="dragStart(event, 'red', '車')">車</div>
+    <div class="palette-item piece-ui red" draggable="true" ondragstart="dragStart(event, 'red', '将')">将</div>
+    <div class="palette-item piece-ui red" draggable="true" ondragstart="dragStart(event, 'red', '砲')">砲</div>
+    <div id="trash-can" class="reset-btn" 
+         ondrop="dropToTrash(event)" 
+         ondragover="allowDrop(event)"
+         ondragenter="this.classList.add('drag-over')"
+         ondragleave="this.classList.remove('drag-over')"
+         onclick="resetBoard()">🗑️</div>
+</div>
+
+<script>
+    const container = document.getElementById('game-container');
+    const scoreDisplay = document.getElementById('best-score');
+    const statusDisplay = document.getElementById('status-text');
+    const trashCan = document.getElementById('trash-can');
+    const COLS = 8; const ROWS = 9; 
+    let pieces = []; 
+
+    const DIRS_4 = [[0, -1], [0, 1], [1, 0], [-1, 0]]; 
+    const DIAG_4 = [[1, -1], [1, 1], [-1, 1], [-1, -1]];
+    const HORSE_8 = [[1, -2], [2, -1], [2, 1], [1, 2], [-1, 2], [-2, 1], [-2, -1], [-1, -2]];
+
+    function init() {
+        for (let y = 0; y < ROWS; y++) {
+            for (let x = 0; x < COLS; x++) {
+                const dot = document.createElement('div');
+                dot.className = 'point';
+                dot.style.left = `${5 + (x / (COLS - 1)) * 90}%`;
+                dot.style.top = `${5 + (y / (ROWS - 1)) * 90}%`;
+                container.appendChild(dot);
+            }
+        }
+    }
+
+    function dragStart(e, side, type, id = null) {
+        const piece = pieces.find(p => p.id === id);
+        e.dataTransfer.setData('text/plain', JSON.stringify({ 
+            side, type, id, 
+            startX: piece ? piece.x : -1, 
+            startY: piece ? piece.y : -1 
+        }));
+    }
+
+    function allowDrop(e) { e.preventDefault(); }
+
+    function dropToBoard(e) {
+        e.preventDefault();
+        const rect = container.getBoundingClientRect();
+        const x = Math.round((((e.clientX - rect.left) / rect.width) - 0.05) / 0.9 * (COLS - 1));
+        const y = Math.round((((e.clientY - rect.top) / rect.height) - 0.05) / 0.9 * (ROWS - 1));
+        
+        if (x < 0 || x >= COLS || y < 0 || y >= ROWS) return;
+
+        const data = JSON.parse(e.dataTransfer.getData('text/plain'));
+        
+        if (data.id && data.startX === x && data.startY === y) {
+            render();
+            return;
+        }
+
+        if (data.side === 'blue') pieces = pieces.filter(p => p.side !== 'blue');
+        pieces = pieces.filter(p => !(p.x === x && p.y === y) && p.id !== data.id);
+        pieces.push({ id: data.id || Date.now(), side: data.side, type: data.type, x, y });
+        render();
+    }
+
+    function dropToTrash(e) {
+        e.preventDefault();
+        trashCan.classList.remove('drag-over');
+        const data = JSON.parse(e.dataTransfer.getData('text/plain'));
+        if (data.id) {
+            pieces = pieces.filter(p => p.id !== data.id);
+            render();
+        }
+    }
+
+    function resetBoard() { if(confirm("盤面をリセットしますか？")) { pieces = []; render(); } }
+
+    function getAttackMap(currentPieces) {
+        const attackMap = new Set();
+        currentPieces.filter(p => p.side === 'red').forEach(p => {
+            const add = (x, y) => { if(x>=0 && x<COLS && y>=0 && y<ROWS) attackMap.add(`${x},${y}`); };
+            const checkAt = (x, y) => currentPieces.find(o => o.x === x && o.y === y);
+
+            switch(p.type) {
+                case '車':
+                    DIRS_4.forEach(([dx, dy]) => {
+                        for(let i=1; i<10; i++){
+                            let nx=p.x+dx*i, ny=p.y+dy*i; if(nx<0||nx>=COLS||ny<0||ny>=ROWS) break;
+                            add(nx, ny); if(checkAt(nx, ny)) break;
+                        }
+                    });
+                    break;
+                case '馬': 
+                    HORSE_8.forEach(([dx, dy]) => {
+                        const cx = dx === 2 || dx === -2 ? dx / 2 : 0;
+                        const cy = dy === 2 || dy === -2 ? dy / 2 : 0;
+                        if (!currentPieces.some(pc => pc.x === p.x + cx && pc.y === p.y + cy)) add(p.x + dx, p.y + dy);
+                    }); 
+                    break;
+                case '砲':
+                    DIRS_4.forEach(([dx, dy]) => {
+                        let count = 0;
+                        for(let i=1; i<10; i++){
+                            let nx=p.x+dx*i, ny=p.y+dy*i; if(nx<0||nx>=COLS||ny<0||ny>=ROWS) break;
+                            const target = checkAt(nx, ny);
+                            if (count === 0) { if (target) count = 1; } 
+                            else if (count === 1) { add(nx, ny); if (target) break; }
+                        }
+                    });
+                    break;
+                case '卒': 
+                case '将': DIRS_4.forEach(([dx, dy]) => add(p.x+dx, p.y+dy)); break;
+                case '象':
+                    DIAG_4.forEach(([dx, dy]) => {
+                        if (!currentPieces.some(pc => pc.x === p.x + dx && pc.y === p.y + dy)) {
+                            add(p.x+dx*2, p.y+dy*2);
+                        }
+                    });
+                    break;
+                case '士': DIAG_4.forEach(([dx, dy]) => add(p.x+dx, p.y+dy)); break;
+            }
+        });
+        return attackMap;
+    }
+
+    function render() {
+        container.querySelectorAll('.piece, .marker').forEach(el => el.remove());
+        const currentAttackMap = getAttackMap(pieces);
+        const myCar = pieces.find(p => p.side === 'blue');
+        let carInDanger = false;
+
+        pieces.forEach(p => {
+            const el = document.createElement('div');
+            el.className = `piece piece-ui ${p.side}`;
+            if (p.side === 'blue' && currentAttackMap.has(`${p.x},${p.y}`)) {
+                el.classList.add('danger-piece'); carInDanger = true;
+            }
+            el.innerText = p.type; 
+            el.style.left = `${5 + (p.x / (COLS - 1)) * 90}%`; 
+            el.style.top = `${5 + (p.y / (ROWS - 1)) * 90}%`;
+            el.draggable = true; 
+            el.ondragstart = (e) => dragStart(e, p.side, p.type, p.id);
+            container.appendChild(el);
+        });
+
+        statusDisplay.innerText = carInDanger ? "DANGER!" : (myCar ? "Stable" : "Place Car");
+        statusDisplay.style.color = carInDanger ? "#ff4444" : "#4caf50";
+
+        if (myCar) calculateAndShowMoves(myCar);
+        else scoreDisplay.innerText = "0";
+    }
+
+    function calculateAndShowMoves(car) {
+        const candidates = [];
+        DIRS_4.forEach(([dx, dy]) => {
+            for (let i = 1; i < 10; i++) {
+                let nx = car.x+dx*i, ny = car.y+dy*i; if (nx<0||nx>=COLS||ny<0||ny>=ROWS) break;
+                const pieceAtTarget = pieces.find(p => p.x === nx && p.y === ny);
+                if (pieceAtTarget && pieceAtTarget.side === 'blue') break;
+
+                const futurePieces = pieces.map(p => p.side === 'blue' ? { ...p, x: nx, y: ny } : p);
+                const attackMapAtPos = getAttackMap(futurePieces);
+                const isSafe = !attackMapAtPos.has(`${nx},${ny}`);
+
+                let score = 0;
+                if (isSafe) {
+                    score += 10;
+                    if (pieceAtTarget && pieceAtTarget.side === 'red') {
+                        score += 1000;
+                    } else {
+                        DIRS_4.forEach(([adx, ady]) => {
+                            for (let j = 1; j < 10; j++) {
+                                let ax = nx + adx * j, ay = ny + ady * j; if (ax<0||ax>=COLS||ay<0||ay>=ROWS) break;
+                                const target = futurePieces.find(p => p.x === ax && p.y === ay);
+                                if (target) {
+                                    if (target.side === 'red') {
+                                        const scoreBoard = futurePieces.map(p => p.side === 'blue' ? { ...p, x: ax, y: ay } : p);
+                                        if (!getAttackMap(scoreBoard).has(`${ax},${ay}`)) score += 100;
+                                    }
+                                    break;
+                                }
+                            }
+                        });
+                    }
+                }
+                candidates.push({ x: nx, y: ny, isDanger: !isSafe, score });
+                if (pieceAtTarget) break;
+            }
+        });
+
+        const safeCandidates = candidates.filter(c => !c.isDanger);
+        const maxScore = safeCandidates.length > 0 ? Math.max(...safeCandidates.map(c => c.score)) : 0;
+        scoreDisplay.innerText = maxScore;
+        
+        candidates.forEach(c => {
+            const marker = document.createElement('div');
+            let typeClass = c.isDanger ? 'danger' : 'safe';
+            if (!c.isDanger && c.score === maxScore && maxScore > 0) typeClass = 'best';
+            marker.className = `marker ${typeClass}`;
+            marker.style.left = `${5 + (c.x/(COLS - 1)) * 90}%`; 
+            marker.style.top = `${5 + (c.y/(ROWS - 1)) * 90}%`;
+            container.appendChild(marker);
+        });
+    }
+    init();
+</script>
+</body>
+</html>
