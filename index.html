@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>シャンチー・シミュレーター v1.6.1-Universal</title>
+    <title>シャンチー・シミュレーター v1.6.1-Minimal</title>
     <style>
         :root {
             --board-bg: #f5deb3;
@@ -16,16 +16,9 @@
             position: fixed; width: 100%; height: 100%; overflow: hidden; overscroll-behavior: none;
         }
         body { 
-            display: flex; flex-direction: column; align-items: center; background-color: #2c3e50; 
+            display: flex; flex-direction: column; align-items: center; justify-content: center; background-color: #2c3e50; 
             margin: 0; padding: 10px; font-family: sans-serif; touch-action: none; color: white;
         }
-        #score-panel {
-            width: 90vw; max-width: 360px; background: rgba(0, 0, 0, 0.7);
-            padding: 12px; border-radius: 8px; margin-bottom: 10px;
-            display: flex; justify-content: space-between; align-items: center;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.5); border: 1px solid #444;
-        }
-        .score-value { font-size: 28px; font-weight: bold; color: #4caf50; }
         #game-container { 
             width: 90vw; max-width: 360px; aspect-ratio: 360 / 400; 
             position: relative; background-color: var(--board-bg); 
@@ -60,10 +53,6 @@
     </style>
 </head>
 <body>
-<div id="score-panel">
-    <div>BEST SCORE<div id="best-score" class="score-value">0</div></div>
-    <div id="status-text" style="font-weight: bold; color: #ffeb3b;">Ready</div>
-</div>
 <div id="game-container"><div id="board-grid"></div><div id="board-lines-h"></div><div id="board-outline"></div><div id="river"></div></div>
 <div id="palette">
     <div class="palette-item piece-ui blue" data-side="blue" data-type="車">自車</div>
@@ -78,8 +67,6 @@
 </div>
 <script>
     const container = document.getElementById('game-container');
-    const scoreDisplay = document.getElementById('best-score');
-    const statusDisplay = document.getElementById('status-text');
     const trashCan = document.getElementById('trash-can');
     const COLS = 8, ROWS = 9;
     let pieces = [], activeDrag = null, draggedPieceId = null;
@@ -101,7 +88,6 @@
     }
 
     function setupEvents() {
-        // ポインターイベントで共通化
         document.querySelectorAll('.palette-item').forEach(el => {
             el.onpointerdown = (e) => handleStart(e, el.dataset.side, el.dataset.type);
         });
@@ -162,7 +148,7 @@
         activeDrag = null; draggedPieceId = null; render();
     }
 
-    function resetBoard() { if(confirm("RESET?")) { pieces = []; render(); } }
+    function resetBoard() { if(confirm("盤面をリセットしますか？")) { pieces = []; render(); } }
 
     function getAttackMap(currentPieces) {
         const attackMap = new Set();
@@ -185,19 +171,16 @@
         container.querySelectorAll('.piece, .marker').forEach(el => el.remove());
         const currentAttackMap = getAttackMap(pieces);
         const myCar = pieces.find(p => p.side === 'blue');
-        let carInDanger = false;
         pieces.forEach(p => {
             if (p.id === draggedPieceId) return;
             const el = document.createElement('div');
             el.className = `piece piece-ui ${p.side}`;
-            if (p.side === 'blue' && currentAttackMap.has(`${p.x},${p.y}`)) { el.classList.add('danger-piece'); carInDanger = true; }
+            if (p.side === 'blue' && currentAttackMap.has(`${p.x},${p.y}`)) el.classList.add('danger-piece');
             el.innerText = p.type; el.style.left = `${5 + (p.x/7)*90}%`; el.style.top = `${5 + (p.y/8)*90}%`;
             el.onpointerdown = (e) => handleStart(e, p.side, p.type, p.id);
             container.appendChild(el);
         });
-        statusDisplay.innerText = carInDanger ? "DANGER!" : (myCar ? "Stable" : "Place Car");
-        statusDisplay.style.color = carInDanger ? "#ff4444" : "#4caf50";
-        if (myCar) calculateMoves(myCar); else scoreDisplay.innerText = "0";
+        if (myCar) calculateMoves(myCar);
     }
 
     function calculateMoves(car) {
@@ -216,7 +199,6 @@
             }
         });
         const maxS = cands.filter(c => !c.isDanger).length ? Math.max(...cands.filter(c => !c.isDanger).map(c => c.score)) : 0;
-        scoreDisplay.innerText = maxS;
         cands.forEach(c => {
             const m = document.createElement('div');
             m.className = `marker ${c.isDanger ? 'danger' : (c.score === maxS && maxS > 0 ? 'best' : 'safe')}`;
