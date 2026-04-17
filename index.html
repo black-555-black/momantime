@@ -53,7 +53,11 @@
             font-weight: 900; /* 太字を最大に */
             font-size: 18px; /* 文字を大きく */
             text-shadow: 1px 1px 2px rgba(0,0,0,0.8); /* 文字に影（縁取り効果） */
-            box-shadow: 0 4px 8px rgba(0,0,0,0.4); user-select: none; transition: transform 0.2s; 
+            box-shadow: 0 4px 8px rgba(0,0,0,0.4); user-select: none; transition: transform 0.2s;
+            user-select: none;           /* テキスト選択を禁止 */
+            -webkit-user-select: none;   /* iOS Safari用 */
+            -webkit-touch-callout: none; /* 長押しメニュー（コピー等）を禁止 */
+            touch-action: none;          /* ブラウザ固有のスクロールやズームを無効化 */
         }
         
         .piece-ui.blue { background: var(--blue-piece); }
