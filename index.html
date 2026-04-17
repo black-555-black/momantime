@@ -1,4 +1,4 @@
-<!-- VERSION: v1.6.1-MobileScrollFixed -->
+<!-- VERSION: v1.6.1-MobileDragVisualFixed -->
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -13,58 +13,23 @@
             --blue-piece: radial-gradient(circle at 30% 30%, #4a90e2, #1a5a9e);
             --red-piece: radial-gradient(circle at 30% 30%, #e74c3c, #96281b);
         }
-        /* 【修正】スクロールを完全に防止するCSS */
-        html, body { 
-            position: fixed; 
-            width: 100%; 
-            height: 100%; 
-            overflow: hidden; 
-            overscroll-behavior: none;
-        }
-        body { 
-            display: flex; flex-direction: column; align-items: center; background-color: #2c3e50; 
-            margin: 0; padding: 10px; font-family: sans-serif; touch-action: none; 
-            color: white;
-        }
+        html, body { position: fixed; width: 100%; height: 100%; overflow: hidden; overscroll-behavior: none; }
+        body { display: flex; flex-direction: column; align-items: center; background-color: #2c3e50; margin: 0; padding: 10px; font-family: sans-serif; touch-action: none; color: white; }
         
-        #score-panel {
-            width: 90vw; max-width: 360px; background: rgba(0, 0, 0, 0.7);
-            padding: 12px; border-radius: 8px; margin-bottom: 10px;
-            display: flex; justify-content: space-between; align-items: center;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.5); border: 1px solid #444;
-        }
+        #score-panel { width: 90vw; max-width: 360px; background: rgba(0, 0, 0, 0.7); padding: 12px; border-radius: 8px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 15px rgba(0,0,0,0.5); border: 1px solid #444; }
         .score-item { text-align: center; flex: 1; }
         .score-value { font-size: 28px; font-weight: bold; color: #4caf50; }
         .score-label { font-size: 11px; opacity: 0.7; letter-spacing: 1px; }
 
-        #game-container { 
-            width: 90vw; max-width: 360px; aspect-ratio: 360 / 400; 
-            position: relative; background-color: var(--board-bg); 
-            border: 4px double var(--line-color); box-shadow: 0 10px 30px rgba(0,0,0,0.6); 
-            box-sizing: border-box;
-        }
-        #board-grid { 
-            position: absolute; top: 5%; left: 5%; right: 5%; bottom: 5%;
-            background-image: linear-gradient(var(--line-color) 1px, transparent 1px), linear-gradient(90deg, var(--line-color) 1px, transparent 1px);
-            background-size: 100% 12.5%, 14.2857% 100%; border-right: 1px solid var(--line-color); border-bottom: 1px solid var(--line-color);
-            pointer-events: none;
-            -webkit-mask-image: linear-gradient(to bottom, black 37.5%, transparent 37.5%, transparent 50%, black 50%);
-            mask-image: linear-gradient(to bottom, black 37.5%, transparent 37.5%, transparent 50%, black 50%);
-        }
+        #game-container { width: 90vw; max-width: 360px; aspect-ratio: 360 / 400; position: relative; background-color: var(--board-bg); border: 4px double var(--line-color); box-shadow: 0 10px 30px rgba(0,0,0,0.6); box-sizing: border-box; }
+        #board-grid { position: absolute; top: 5%; left: 5%; right: 5%; bottom: 5%; background-image: linear-gradient(var(--line-color) 1px, transparent 1px), linear-gradient(90deg, var(--line-color) 1px, transparent 1px); background-size: 100% 12.5%, 14.2857% 100%; border-right: 1px solid var(--line-color); border-bottom: 1px solid var(--line-color); pointer-events: none; -webkit-mask-image: linear-gradient(to bottom, black 37.5%, transparent 37.5%, transparent 50%, black 50%); mask-image: linear-gradient(to bottom, black 37.5%, transparent 37.5%, transparent 50%, black 50%); }
         #board-lines-h { position: absolute; top: 5%; left: 5%; right: 5%; bottom: 5%; background-image: linear-gradient(var(--line-color) 1px, transparent 1px); background-size: 100% 12.5%; pointer-events: none; }
         #board-outline { position: absolute; top: 5%; left: 5%; right: 5%; bottom: 5%; border-left: 1px solid var(--line-color); border-right: 1px solid var(--line-color); pointer-events: none; }
         #river { position: absolute; top: 38.75%; left: 5%; right: 5%; height: 11.25%; background-color: var(--river-bg); pointer-events: none; }
         
         .point { position: absolute; width: 6px; height: 6px; background-color: var(--line-color); border-radius: 50%; transform: translate(-50%, -50%); opacity: 0.4; z-index: 2; }
         
-        .piece-ui { 
-            width: 34px; height: 34px; border-radius: 50%; 
-            display: flex; justify-content: center; align-items: center; 
-            color: white; font-weight: 900; font-size: 18px; 
-            text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
-            box-shadow: 0 4px 8px rgba(0,0,0,0.4); 
-            user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
-        }
+        .piece-ui { width: 34px; height: 34px; border-radius: 50%; display: flex; justify-content: center; align-items: center; color: white; font-weight: 900; font-size: 18px; text-shadow: 1px 1px 2px rgba(0,0,0,0.8); box-shadow: 0 4px 8px rgba(0,0,0,0.4); user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
         .piece-ui.blue { background: var(--blue-piece); }
         .piece-ui.red { background: var(--red-piece); }
         .piece { position: absolute; transform: translate(-50%, -50%); cursor: grab; z-index: 10; touch-action: none; }
@@ -75,43 +40,20 @@
         .marker { border-radius: 50%; position: absolute; transform: translate(-50%, -50%); pointer-events: none; z-index: 15; border: 2px solid #fff; }
         .marker.danger { width: 22px; height: 22px; background-color: rgba(255, 68, 68, 0.8); animation: blink 1s infinite; }
         .marker.safe { width: 22px; height: 22px; background-color: rgba(255, 235, 59, 0.8); }
-        .marker.best { 
-            width: 38px; height: 38px; background-color: rgba(76, 175, 80, 0.4); 
-            border: 3px solid #4caf50; box-shadow: 0 0 15px #4caf50;
-            animation: pulse-best 1.5s infinite;
-        }
-
-        @keyframes blink { 0%, 100% { opacity: 0.5; } 50% { opacity: 1; } }
+        .marker.best { width: 38px; height: 38px; background-color: rgba(76, 175, 80, 0.4); border: 3px solid #4caf50; box-shadow: 0 0 15px #4caf50; animation: pulse-best 1.5s infinite; }
         @keyframes pulse-best { 0%, 100% { transform: translate(-50%, -50%) scale(0.9); } 50% { transform: translate(-50%, -50%) scale(1.1); } }
 
         #palette { margin-top: 15px; display: flex; gap: 6px; background: rgba(255,255,255,0.1); padding: 12px; border-radius: 10px; flex-wrap: wrap; justify-content: center; max-width: 420px; }
         .palette-item { cursor: pointer; width: 38px; height: 38px; font-size: 12px; touch-action: none; }
-        
-        .reset-btn { 
-            background: #e74c3c; font-size: 20px; width: 38px; height: 38px; 
-            border-radius: 50%; display: flex; align-items: center; justify-content: center; 
-            cursor: pointer; color: white; border: 2px solid #c0392b; 
-            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
-        }
+        .reset-btn { background: #e74c3c; font-size: 20px; width: 38px; height: 38px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; color: white; border: 2px solid #c0392b; box-shadow: 0 4px 8px rgba(0,0,0,0.3); }
     </style>
 </head>
 <body>
-
 <div id="score-panel">
-    <div class="score-item">
-        <div class="score-label">BEST MOVE SCORE</div>
-        <div id="best-score" class="score-value">0</div>
-    </div>
-    <div class="score-item">
-        <div class="score-label">CAR STATUS</div>
-        <div id="status-text" style="font-size: 13px; font-weight: bold; color: #ffeb3b;">Ready</div>
-    </div>
+    <div class="score-item"><div class="score-label">BEST MOVE SCORE</div><div id="best-score" class="score-value">0</div></div>
+    <div class="score-item"><div class="score-label">CAR STATUS</div><div id="status-text" style="font-size: 13px; font-weight: bold; color: #ffeb3b;">Ready</div></div>
 </div>
-
-<div id="game-container">
-    <div id="board-grid"></div><div id="board-lines-h"></div><div id="board-outline"></div><div id="river"></div>
-</div>
-
+<div id="game-container"><div id="board-grid"></div><div id="board-lines-h"></div><div id="board-outline"></div><div id="river"></div></div>
 <div id="palette">
     <div class="palette-item piece-ui blue" data-side="blue" data-type="車">自車</div>
     <div class="palette-item piece-ui red" data-side="red" data-type="卒">卒</div>
@@ -131,12 +73,12 @@
     const trashCan = document.getElementById('trash-can');
     const COLS = 8; const ROWS = 9; 
     let pieces = []; 
-
-    const DIRS_4 = [[0, -1], [0, 1], [1, 0], [-1, 0]]; 
-    const DIAG_4 = [[1, -1], [1, 1], [-1, 1], [-1, -1]];
-    const HORSE_8 = [[1, -2], [2, -1], [2, 1], [1, 2], [-1, 2], [-2, 1], [-2, -1], [-1, -2]];
-
     let activeDrag = null;
+    let draggedPieceId = null; // 【追加】移動元の駒を特定するためのID
+
+    const DIRS_4 = [[0, -1],,, [-1, 0]]; 
+    const DIAG_4 = [[1, -1],, [-1, 1], [-1, -1]];
+    const HORSE_8 = [[1, -2], [2, -1],,, [-1, 2], [-2, 1], [-2, -1], [-1, -2]];
 
     function init() {
         for (let y = 0; y < ROWS; y++) {
@@ -152,27 +94,12 @@
     }
 
     function setupTouchEvents() {
-        // パレットからのドラッグ開始
         document.querySelectorAll('.palette-item').forEach(el => {
             el.addEventListener('touchstart', (e) => handleDragStart(e, el.dataset.side, el.dataset.type), {passive: false});
         });
-        
         trashCan.addEventListener('click', resetBoard);
-
-        // 全体でのタッチ挙動制御
-        window.addEventListener('touchmove', (e) => {
-            if (activeDrag) {
-                handleDragMove(e);
-            }
-        }, {passive: false});
-
-        window.addEventListener('touchend', (e) => {
-            if (activeDrag) {
-                handleDragEnd(e);
-            }
-        }, {passive: false});
-
-        // 画面全体のスクロール防止を確実に
+        window.addEventListener('touchmove', (e) => { if (activeDrag) handleDragMove(e); }, {passive: false});
+        window.addEventListener('touchend', (e) => { if (activeDrag) handleDragEnd(e); }, {passive: false});
         document.addEventListener('touchmove', (e) => { e.preventDefault(); }, {passive: false});
     }
 
@@ -180,12 +107,14 @@
         e.preventDefault();
         const touch = e.touches[0];
         const pieceData = pieces.find(p => p.id === id);
+        draggedPieceId = id; // 移動元を特定
         activeDrag = {
             side, type, id,
             startX: pieceData ? pieceData.x : -1,
             startY: pieceData ? pieceData.y : -1,
             element: createGhost(type, side, touch.clientX, touch.clientY)
         };
+        render(); // 移動元を薄くするために再描画
     }
 
     function createGhost(type, side, x, y) {
@@ -205,18 +134,12 @@
 
     function handleDragMove(e) {
         if (!activeDrag) return;
-        e.preventDefault();
         const touch = e.touches[0];
         activeDrag.element.style.left = touch.clientX + 'px';
         activeDrag.element.style.top = touch.clientY + 'px';
-        
         const trashRect = trashCan.getBoundingClientRect();
-        if (touch.clientX >= trashRect.left && touch.clientX <= trashRect.right &&
-            touch.clientY >= trashRect.top && touch.clientY <= trashRect.bottom) {
-            trashCan.classList.add('drag-over');
-        } else {
-            trashCan.classList.remove('drag-over');
-        }
+        if (touch.clientX >= trashRect.left && touch.clientX <= trashRect.right && touch.clientY >= trashRect.top && touch.clientY <= trashRect.bottom) trashCan.classList.add('drag-over');
+        else trashCan.classList.remove('drag-over');
     }
 
     function handleDragEnd(e) {
@@ -224,17 +147,13 @@
         const touch = e.changedTouches[0];
         const rect = container.getBoundingClientRect();
         const trashRect = trashCan.getBoundingClientRect();
-        
         activeDrag.element.remove();
         trashCan.classList.remove('drag-over');
-
-        if (touch.clientX >= trashRect.left && touch.clientX <= trashRect.right &&
-            touch.clientY >= trashRect.top && touch.clientY <= trashRect.bottom) {
+        if (touch.clientX >= trashRect.left && touch.clientX <= trashRect.right && touch.clientY >= trashRect.top && touch.clientY <= trashRect.bottom) {
             if (activeDrag.id) pieces = pieces.filter(p => p.id !== activeDrag.id);
         } else {
             const x = Math.round((((touch.clientX - rect.left) / rect.width) - 0.05) / 0.9 * (COLS - 1));
             const y = Math.round((((touch.clientY - rect.top) / rect.height) - 0.05) / 0.9 * (ROWS - 1));
-
             if (x >= 0 && x < COLS && y >= 0 && y < ROWS) {
                 if (!(activeDrag.id && activeDrag.startX === x && activeDrag.startY === y)) {
                     if (activeDrag.side === 'blue') pieces = pieces.filter(p => p.side !== 'blue');
@@ -244,6 +163,7 @@
             }
         }
         activeDrag = null;
+        draggedPieceId = null; // IDをリセット
         render();
     }
 
@@ -271,20 +191,18 @@
         const currentAttackMap = getAttackMap(pieces);
         const myCar = pieces.find(p => p.side === 'blue');
         let carInDanger = false;
-
         pieces.forEach(p => {
             const el = document.createElement('div');
             el.className = `piece piece-ui ${p.side}`;
-            if (p.side === 'blue' && currentAttackMap.has(`${p.x},${p.y}`)) {
-                el.classList.add('danger-piece'); carInDanger = true;
-            }
+            if (p.side === 'blue' && currentAttackMap.has(`${p.x},${p.y}`)) { el.classList.add('danger-piece'); carInDanger = true; }
             el.innerText = p.type; 
             el.style.left = `${5 + (p.x / (COLS - 1)) * 90}%`; 
             el.style.top = `${5 + (p.y / (ROWS - 1)) * 90}%`;
+            // 【追加】ドラッグ中なら半透明にする
+            if (p.id === draggedPieceId) el.style.opacity = "0.3";
             el.addEventListener('touchstart', (e) => handleDragStart(e, p.side, p.type, p.id), {passive: false});
             container.appendChild(el);
         });
-
         statusDisplay.innerText = carInDanger ? "DANGER!" : (myCar ? "Stable" : "Place Car");
         statusDisplay.style.color = carInDanger ? "#ff4444" : "#4caf50";
         if (myCar) calculateAndShowMoves(myCar); else scoreDisplay.innerText = "0";
