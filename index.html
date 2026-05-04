@@ -1,10 +1,10 @@
-<!-- VERSION: v2.7.6 (Enemy Guide: Smaller Grey Tactical Square) -->
+<!-- VERSION: v2.8.0 (Undo/Redo with Mode State Persistence) -->
 <!DOCTYPE html>
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>シャンチー v2.7.6 Grey Guide</title>
+    <title>シャンチー v2.8.0 Mode-History</title>
     <style>
         :root {
             --board-bg: #f5deb3;
@@ -16,7 +16,6 @@
         html, body { position: fixed; width: 100%; height: 100%; overflow: hidden; overscroll-behavior: none; }
         body { display: flex; flex-direction: column; align-items: center; justify-content: center; background-color: #2c3e50; margin: 0; padding: 10px; font-family: sans-serif; touch-action: none; color: white; }
         
-        /* 十字稲妻 */
         .thunder-line { position: absolute; background: white; box-shadow: 0 0 30px 10px #bf5af2, 0 0 60px 20px white; z-index: 2500; pointer-events: none; opacity: 0; }
         .thunder-h { height: 8px; width: 100%; left: 0; animation: bolt-flash-multi 0.5s ease-out; }
         .thunder-v { width: 8px; height: 100%; top: 0; animation: bolt-flash-multi 0.5s ease-out; }
@@ -50,15 +49,7 @@
         .marker.safe { width: 22px; height: 22px; background-color: rgba(255, 235, 59, 0.8); border: 2px solid #fff; }
         .marker.best { width: 40px; height: 40px; border: 3px solid #4caf50; background-color: rgba(76, 175, 80, 0.4); animation: pulse-best 1.5s infinite; }
         .marker.aim { width: 40px; height: 40px; border: 3px dashed #4caf50; background-color: rgba(76, 175, 80, 0.1); animation: pulse-best 2s infinite linear; }
-        
-        /* 敵駒ガイド：小さめのグレー・スクエア */
-        .marker.guide { 
-            width: 24px; height: 24px; border-radius: 3px;
-            border: 1.5px solid rgba(160, 160, 160, 0.8);
-            background-color: rgba(200, 200, 200, 0.2);
-            box-shadow: 0 0 5px rgba(0, 0, 0, 0.3);
-            animation: guide-pulse 1.2s infinite;
-        }
+        .marker.guide { width: 24px; height: 24px; border-radius: 3px; border: 1.5px solid rgba(160, 160, 160, 0.8); background-color: rgba(200, 200, 200, 0.2); animation: guide-pulse 1.2s infinite; }
         @keyframes guide-pulse { 0%, 100% { opacity: 0.5; transform: translate(-50%, -50%) scale(0.95); } 50% { opacity: 1; transform: translate(-50%, -50%) scale(1); } }
         
         #top-controls { width: 90vw; max-width: 360px; display: flex; justify-content: flex-end; gap: 8px; margin-bottom: 10px; }
@@ -107,7 +98,8 @@
     const DIRS_ELEPH = [[-2, -2], [2, -2], [-2, 2], [2, 2]];
     const DIRS_DIAG = [[-1, -1], [1, -1], [-1, 1], [1, 1]];
 
-    let pieces = [], history = [{p:[]}], hIdx = 0, isTaiko = false, isAwake = false, isAnimating = false, draggedPieceId = null;
+    // 履歴初期状態にモードフラグ(t, a)を追加
+    let pieces = [], history = [{p:[], t:false, a:false}], hIdx = 0, isTaiko = false, isAwake = false, isAnimating = false, draggedPieceId = null;
 
     function init() {
         for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) {
@@ -142,18 +134,39 @@
 
     function setupEvents() {
         document.querySelectorAll('.palette-item').forEach(el => el.onpointerdown = (e) => !isAnimating && handleStart(e, el.dataset.side, el.dataset.type));
-        trashBtn.onclick = () => { if (!isAnimating && confirm("全削除しますか？")) { pieces = []; saveH(); render(); } };
+        trashBtn.onclick = () => { if (!isAnimating && confirm("全削除しますか？")) { pieces = []; isTaiko = false; isAwake = false; saveH(); render(); } };
         document.getElementById('undo-btn').onclick = () => !isAnimating && hIdx > 0 && (hIdx--, applyH());
         document.getElementById('redo-btn').onclick = () => !isAnimating && hIdx < history.length - 1 && (hIdx++, applyH());
-        document.getElementById('taiko-btn').onclick = () => { if (!isAnimating) { isTaiko = !isTaiko; if (isTaiko) { drumCutin.classList.add('drum-show'); setTimeout(() => drumCutin.classList.remove('drum-show'), 1000); } updateUI(); render(); } };
-        document.getElementById('awake-btn').onclick = () => { if (!isAnimating) { isAwake = !isAwake; updateUI(); render(); } };
+        document.getElementById('taiko-btn').onclick = () => { 
+            if (!isAnimating) { isTaiko = !isTaiko; if (isTaiko) { drumCutin.classList.add('drum-show'); setTimeout(() => drumCutin.classList.remove('drum-show'), 1000); } saveH(); render(); } 
+        };
+        document.getElementById('awake-btn').onclick = () => { if (!isAnimating) { isAwake = !isAwake; saveH(); render(); } };
         window.onpointermove = (e) => !isAnimating && handleMove(e);
         window.onpointerup = (e) => !isAnimating && handleEnd(e);
     }
 
-    function updateUI() { document.getElementById('taiko-btn').classList.toggle('active', isTaiko); document.getElementById('awake-btn').classList.toggle('active', isAwake); }
-    function saveH() { history = history.slice(0, hIdx + 1); history.push({ p: JSON.parse(JSON.stringify(pieces)) }); hIdx++; }
-    function applyH() { pieces = JSON.parse(JSON.stringify(history[hIdx].p)); render(); }
+    function updateUI() { 
+        document.getElementById('taiko-btn').classList.toggle('active', isTaiko); 
+        document.getElementById('awake-btn').classList.toggle('active', isAwake); 
+    }
+    
+    // 履歴保存：現在の駒配置とモード状態を保存
+    function saveH() { 
+        history = history.slice(0, hIdx + 1); 
+        history.push({ p: JSON.parse(JSON.stringify(pieces)), t: isTaiko, a: isAwake }); 
+        hIdx++; 
+        updateUI();
+    }
+    
+    // 履歴復元：配置とモード状態を元に戻す
+    function applyH() { 
+        const state = history[hIdx];
+        pieces = JSON.parse(JSON.stringify(state.p)); 
+        isTaiko = state.t; 
+        isAwake = state.a; 
+        render(); 
+        updateUI();
+    }
 
     function handleStart(e, s, t, id = null) {
         e.preventDefault(); draggedPieceId = id; const pD = pieces.find(p => p.id === id);
@@ -183,7 +196,7 @@
                     let killedGeneral = false;
                     if (window.activeDrag.side === 'blue' && window.activeDrag.id !== null) {
                         const dx = Math.sign(x - window.activeDrag.startX), dy = Math.sign(y - window.activeDrag.startY);
-                        if (isTaiko && (dx !== 0 || dy !== 0)) {
+                        if (isTaiko && (dx === 0 || dy === 0)) {
                             let tx = window.activeDrag.startX, ty = window.activeDrag.startY;
                             while (tx !== x || ty !== y) {
                                 tx += dx; ty += dy; const vIdx = pieces.findIndex(p => p.x === tx && p.y === ty && p.side === 'red');
@@ -196,7 +209,7 @@
                     }
                     pieces = pieces.filter(p => !(p.x === x && p.y === y) && p.id !== window.activeDrag.id);
                     pieces.push({ id: window.activeDrag.id || Date.now(), side: window.activeDrag.side, type: window.activeDrag.type, x, y });
-                    if (killedGeneral) isAwake = true; isTaiko = false; updateUI(); saveH();
+                    if (killedGeneral) isAwake = true; isTaiko = false; saveH();
                     if (window.activeDrag.id !== null && window.activeDrag.side === 'blue') checkDefeat(pieces.find(p => p.side === 'blue'));
                 }
             }
@@ -225,7 +238,7 @@
         targets.forEach(p => {
             const add = (nx, ny) => { if (nx >= 0 && nx < COLS && ny >= 0 && ny < ROWS) amap.add(nx + ',' + ny); };
             const check = (nx, ny) => pList.find(o => o.x === nx && o.y === ny);
-            if (p.type === '車' || p.type === '将') DIRS_4.forEach(([dx, dy]) => { for (let i = 1; i < 10; i++) { let nx = p.x + dx * i, ny = p.y + dy * i; if (nx < 0 || nx >= COLS || ny < 0 || ny >= ROWS) break; add(nx, ny); if (check(nx, ny)) break; if (p.type === '将') break; } });
+            if (p.type === '車' || p.type === '将') DIRS_4.forEach(([dx, dy]) => { for (let i = 1; i < 10; i++) { let nx = p.x + dx * i, ny = p.y + dy * i; if (nx < 0 || nx >= COLS || ny < 0 || ny >= ROWS) break; add(nx, ny); if (check(nx, ny)) break; } });
             if (p.type === '砲') DIRS_4.forEach(([dx, dy]) => { let c = 0; for (let i = 1; i < 10; i++) { let nx = p.x + dx * i, ny = p.y + dy * i; if (nx < 0 || nx >= COLS || ny < 0 || ny >= ROWS) break; if (c === 0) { if (check(nx, ny)) c = 1; } else { add(nx, ny); if (check(nx, ny)) break; } } });
             if (p.type === '馬') DIRS_HORSE.forEach(([dx, dy]) => { if (!check(p.x + ((Math.abs(dx) === 2) ? dx / 2 : 0), p.y + ((Math.abs(dy) === 2) ? dy / 2 : 0))) add(p.x + dx, p.y + dy); });
             if (p.type === '象') DIRS_ELEPH.forEach(([dx, dy]) => { if (!check(p.x + dx / 2, p.y + dy / 2)) add(p.x + dx, p.y + dy); });
