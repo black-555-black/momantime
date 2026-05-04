@@ -1,10 +1,10 @@
-<!-- VERSION: v2.8.9 (Added Top Margin & Fine Dotted Marker) -->
+<!-- VERSION: v2.9.0 (Anti-Text-Selection & Mobile Optimization) -->
 <!DOCTYPE html>
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>シャンチー v2.8.9 Strategy Refined</title>
+    <title>シャンチー v2.9.0 Mobile-Pro</title>
     <style>
         :root {
             --board-bg: #f5deb3;
@@ -13,10 +13,23 @@
             --blue-piece: radial-gradient(circle at 30% 30%, #4a90e2, #1a5a9e);
             --red-piece: radial-gradient(circle at 30% 30%, #e74c3c, #96281b);
         }
-        html, body { position: fixed; width: 100%; height: 100%; overflow: hidden; overscroll-behavior: none; }
-        /* 上部余白を 15px に拡張 */
-        body { display: flex; flex-direction: column; align-items: center; justify-content: flex-start; background-color: #2c3e50; margin: 0; padding: 15px 10px 10px 10px; font-family: sans-serif; touch-action: none; color: white; }
         
+        /* テキスト選択とシステムメニューを完全に禁止 */
+        * { 
+            -webkit-user-select: none;  
+            user-select: none; 
+            -webkit-touch-callout: none; 
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        html, body { position: fixed; width: 100%; height: 100%; overflow: hidden; overscroll-behavior: none; }
+        body { 
+            display: flex; flex-direction: column; align-items: center; justify-content: flex-start; 
+            background-color: #2c3e50; margin: 0; padding: 15px 10px 10px 10px; 
+            font-family: sans-serif; touch-action: none; color: white; 
+        }
+        
+        /* 凡例 */
         #legend { 
             display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; 
             margin-top: 8px; padding: 6px; background: rgba(0,0,0,0.4); 
@@ -48,31 +61,29 @@
         #warning-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255, 0, 0, 0.4); display: none; align-items: center; justify-content: center; z-index: 4000; pointer-events: none; }
         .warning-text { font-size: 55px; color: #ff0000; text-shadow: 0 0 20px black, 0 0 10px white; animation: blink-fast 0.15s infinite; font-weight: 900; width: 80%; text-align: center; }
 
-        #game-container { width: 90vw; max-width: 360px; aspect-ratio: 360 / 400; position: relative; background-color: var(--board-bg); border: 4px double var(--line-color); box-shadow: 0 10px 30px rgba(0,0,0,0.6); box-sizing: border-box; }
+        #game-container { width: 90vw; max-width: 360px; aspect-ratio: 360 / 400; position: relative; background-color: var(--board-bg); border: 4px double var(--line-color); box-shadow: 0 10px 30px rgba(0,0,0,0.6); box-sizing: border-box; touch-action: none; }
         #board-grid { position: absolute; top: 5%; left: 5%; right: 5%; bottom: 5%; background-image: linear-gradient(var(--line-color) 1px, transparent 1px), linear-gradient(90deg, var(--line-color) 1px, transparent 1px); background-size: 100% 12.5%, 14.2857% 100%; border-right: 1px solid var(--line-color); border-bottom: 1px solid var(--line-color); pointer-events: none; -webkit-mask-image: linear-gradient(to bottom, black 37.5%, transparent 37.5%, transparent 50%, black 50%); mask-image: linear-gradient(to bottom, black 37.5%, transparent 37.5%, transparent 50%, black 50%); }
         #river { position: absolute; top: 38.75%; left: 5%; right: 5%; height: 11.25%; background-color: var(--river-bg); pointer-events: none; border-top: 1px solid var(--line-color); border-bottom: 1px solid var(--line-color); }
         .point { position: absolute; width: 6px; height: 6px; background-color: var(--line-color); border-radius: 50%; transform: translate(-50%, -50%); opacity: 0.4; z-index: 2; }
         
-        .piece-ui { width: 34px; height: 34px; border-radius: 50%; display: flex; justify-content: center; align-items: center; color: #fff; font-weight: 600; font-size: 18px; text-shadow: 1px 1px 2px #000; box-shadow: 0 3px 6px rgba(0,0,0,0.4); border: 1.5px solid rgba(220, 220, 220, 0.8); user-select: none; box-sizing: border-box; }
+        .piece-ui { width: 34px; height: 34px; border-radius: 50%; display: flex; justify-content: center; align-items: center; color: #fff; font-weight: 600; font-size: 18px; text-shadow: 1px 1px 2px #000; box-shadow: 0 3px 6px rgba(0,0,0,0.4); border: 1.5px solid rgba(220, 220, 220, 0.8); box-sizing: border-box; touch-action: none; }
         .piece-ui.blue { background: var(--blue-piece); }
         .piece-ui.red { background: var(--red-piece); }
-        .piece { position: absolute; transform: translate(-50%, -50%); cursor: grab; z-index: 30; touch-action: none; transition: left 0.1s, top 0.1s; }
+        .piece { position: absolute; transform: translate(-50%, -50%); cursor: grab; z-index: 30; transition: left 0.1s, top 0.1s; }
         .enemy-striking { transition: left 1.0s cubic-bezier(0.45, 0.05, 0.55, 0.95), top 1.0s cubic-bezier(0.45, 0.05, 0.55, 0.95) !important; z-index: 5000 !important; }
 
         .awake-active { background: radial-gradient(circle at 30% 30%, #9b59b6, #6c3483) !important; animation: glow-purple 0.3s infinite alternate; box-shadow: 0 0 25px #bf5af2; border: 2.5px solid white !important; z-index: 41 !important; }
         .taiko-active { background: radial-gradient(circle at 30% 30%, #f1c40f, #f39c12) !important; animation: glow-gold 0.5s infinite alternate; box-shadow: 0 0 20px #f1c40f; border: 2.5px solid white !important; z-index: 40 !important; }
 
-        /* マーカー UI */
         .marker { border-radius: 50%; position: absolute; transform: translate(-50%, -50%); pointer-events: none; z-index: 20; box-sizing: border-box; }
         .marker.safe { width: 22px; height: 22px; background: rgba(255, 235, 59, 0.9); border: 2px solid #fff; box-shadow: 0 0 4px rgba(0,0,0,0.3); }
         .marker.best { width: 40px; height: 40px; border: 3px solid #4caf50; background: rgba(76, 175, 80, 0.4); }
-        /* 候補：細かい点線(dotted)に修正 */
         .marker.aim { width: 38px; height: 38px; border: 3px dotted #4caf50; background: rgba(76, 175, 80, 0.1); }
         .marker.danger { width: 42px; height: 42px; background: rgba(255, 0, 0, 0.2); border: 3px solid #ff0000; }
         .marker.guide { width: 24px; height: 24px; border-radius: 3px; border: 1.5px solid rgba(160, 160, 160, 0.8); background: rgba(200, 200, 200, 0.2); }
 
         #top-controls { width: 90vw; max-width: 360px; display: flex; justify-content: flex-end; gap: 8px; margin-bottom: 5px; margin-top: 2px; }
-        .ctrl-btn { font-size: 18px; width: 42px; height: 42px; border-radius: 8px; display: flex; align-items: center; justify-content: center; cursor: pointer; user-select: none; border: 1px solid rgba(255,255,255,0.2); color: white; background: #555; transition: all 0.2s; }
+        .ctrl-btn { font-size: 18px; width: 42px; height: 42px; border-radius: 8px; display: flex; align-items: center; justify-content: center; cursor: pointer; border: 1px solid rgba(255,255,255,0.2); color: white; background: #555; transition: all 0.2s; touch-action: manipulation; }
         #awake-btn.active { background: #9b59b6; box-shadow: 0 0 15px #9b59b6; }
         #taiko-btn.active { background: #f1c40f; box-shadow: 0 0 15px #f1c40f; }
         #palette { margin-top: 8px; display: flex; gap: 6px; background: rgba(255,255,255,0.1); padding: 10px; border-radius: 10px; flex-wrap: wrap; justify-content: center; width: 90vw; max-width: 360px; box-sizing: border-box; }
@@ -81,6 +92,7 @@
     </style>
 </head>
 <body>
+<!-- (後半に続く...) -->
 <div id="whiteout"></div>
 <div id="warning-overlay"><div class="warning-text">WARNING</div></div>
 <div id="drum-cutin">🥁</div>
@@ -113,15 +125,14 @@
     <div class="leg-item"><div class="leg-dot" style="border:3px solid #ff0000; background:rgba(255,0,0,0.2)"></div>不可</div>
     <div class="leg-item"><div class="leg-sq"></div>敵ガイド</div>
 </div>
-<!-- (後半に続く...) -->
+
 <script>
     const container = document.getElementById('game-container'), warningOverlay = document.getElementById('warning-overlay'), drumCutin = document.getElementById('drum-cutin'), trashBtn = document.getElementById('trash-can'), whiteout = document.getElementById('whiteout');
     const COLS = 8, ROWS = 9;
-    const D_UP = [0, -1], D_DOWN = [0, 1], D_LEFT = [-1, 0], D_RIGHT = [1, 0];
-    const DIRS_4 = [D_UP, D_DOWN, D_LEFT, D_RIGHT];
-    const DIRS_HORSE = [[1, -2], [-1, -2], [1, 2], [-1, 2], [2, -1], [-2, -1], [2, 1], [-2, 1]];
-    const DIRS_ELEPH = [[-2, -2], [2, -2], [-2, 2], [2, 2]];
-    const DIRS_DIAG = [[-1, -1], [1, -1], [-1, 1], [1, 1]];
+    const DIRS_4 = [[0,-1], [0,1], [-1,0], [1,0]]; 
+    const DIRS_HORSE = [[1,-2], [-1,-2], [1,2], [-1,2], [2,-1], [-2,-1], [2,1], [-2,1]];
+    const DIRS_ELEPH = [[-2,-2], [2,-2], [-2,2], [2,2]];
+    const DIRS_DIAG = [[-1,-1], [1,-1], [-1,1], [1,1]];
 
     let pieces = [], history = [{p:[], t:false, a:false}], hIdx = 0, isTaiko = false, isAwake = false, isAnimating = false, draggedPieceId = null;
 
@@ -183,9 +194,7 @@
         trashBtn.onclick = () => { if (!isAnimating && confirm("全削除しますか？")) { pieces = []; isTaiko = false; isAwake = false; saveH(); render(); } };
         document.getElementById('undo-btn').onclick = () => !isAnimating && hIdx > 0 && (hIdx--, applyH());
         document.getElementById('redo-btn').onclick = () => !isAnimating && hIdx < history.length - 1 && (hIdx++, applyH());
-        document.getElementById('taiko-btn').onclick = () => { 
-            if (!isAnimating) { isTaiko = !isTaiko; if (isTaiko) { drumCutin.classList.add('drum-show'); setTimeout(() => drumCutin.classList.remove('drum-show'), 1000); } saveH(); render(); } 
-        };
+        document.getElementById('taiko-btn').onclick = () => { if (!isAnimating) { isTaiko = !isTaiko; if (isTaiko) { drumCutin.classList.add('drum-show'); setTimeout(() => drumCutin.classList.remove('drum-show'), 1000); } saveH(); render(); } };
         document.getElementById('awake-btn').onclick = () => { if (!isAnimating) { isAwake = !isAwake; saveH(); render(); } };
         window.onpointermove = (e) => !isAnimating && handleMove(e);
         window.onpointerup = (e) => !isAnimating && handleEnd(e);
@@ -219,7 +228,7 @@
                     let killedGen = false;
                     if (window.activeDrag.side === 'blue' && window.activeDrag.id !== null) {
                         const dx = Math.sign(x - window.activeDrag.startX), dy = Math.sign(y - window.activeDrag.startY);
-                        if (isTaiko) {
+                        if (isTaiko && (dx !== 0 || dy !== 0)) {
                             let tx = window.activeDrag.startX, ty = window.activeDrag.startY;
                             while (tx !== x || ty !== y) {
                                 tx += dx; ty += dy; const vIdx = pieces.findIndex(p => p.x === tx && p.y === ty && p.side === 'red');
@@ -268,7 +277,7 @@
             const check = (nx, ny) => pList.find(o => o.x === nx && o.y === ny);
             if (p.type === '車' || p.type === '将') DIRS_4.forEach(([dx, dy]) => { let tx=p.x, ty=p.y; for (let i = 1; i < 10; i++) { tx+=dx; ty+=dy; if (tx < 0 || tx >= COLS || ty < 0 || ty >= ROWS) break; add(tx, ty); if (check(tx, ty)) break; if(p.type==='将') break; } });
             if (p.type === '砲') DIRS_4.forEach(([dx, dy]) => { let tx=p.x, ty=p.y, c = 0; for (let i = 1; i < 10; i++) { tx+=dx; ty+=dy; if (tx < 0 || tx >= COLS || ty < 0 || ty >= ROWS) break; if (c === 0) { if (check(tx, ty)) c = 1; } else { add(tx, ty); if (check(tx, ty)) break; } } });
-            if (p.type === '馬') DIRS_HORSE.forEach(([dx, dy]) => { let legX = p.x + (Math.abs(dx)===2 ? dx/2 : 0), legY = p.y + (Math.abs(dy)===2 ? dy/2 : 0); if (!check(legX, legY)) add(p.x + dx, p.y + dy); });
+            if (p.type === '馬') DIRS_HORSE.forEach(([dx, dy]) => { let lx = p.x + (Math.abs(dx)===2 ? dx/2 : 0), ly = p.y + (Math.abs(dy)===2 ? dy/2 : 0); if (!check(lx, ly)) add(p.x + dx, p.y + dy); });
             if (p.type === '象') DIRS_ELEPH.forEach(([dx, dy]) => { if (!check(p.x + dx / 2, p.y + dy / 2)) add(p.x + dx, p.y + dy); });
             if (p.type === '士') DIRS_DIAG.forEach(([dx, dy]) => add(p.x + dx, p.y + dy));
             if (p.type === '卒') DIRS_4.forEach(([dx, dy]) => add(p.x + dx, p.y + dy));
