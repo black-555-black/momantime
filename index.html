@@ -1,229 +1,314 @@
-<!-- VERSION: v1.6.2 (Marker Transparency Adjusted) -->
+<!-- VERSION: v2.7.6 (Enemy Guide: Smaller Grey Tactical Square) -->
 <!DOCTYPE html>
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>シャンチー・シミュレーター v1.6.2</title>
+    <title>シャンチー v2.7.6 Grey Guide</title>
     <style>
         :root {
             --board-bg: #f5deb3;
-            --river-bg: rgba(100, 180, 255, 0.3);
+            --river-bg: rgba(100, 180, 255, 0.25);
             --line-color: #5d4037;
             --blue-piece: radial-gradient(circle at 30% 30%, #4a90e2, #1a5a9e);
             --red-piece: radial-gradient(circle at 30% 30%, #e74c3c, #96281b);
         }
         html, body { position: fixed; width: 100%; height: 100%; overflow: hidden; overscroll-behavior: none; }
-        body { 
-            display: flex; flex-direction: column; align-items: center; justify-content: center; 
-            background-color: #2c3e50; margin: 0; padding: 10px; font-family: sans-serif; 
-            touch-action: none; color: white; 
-        }
-        #game-container { 
-            width: 90vw; max-width: 360px; aspect-ratio: 360 / 400; 
-            position: relative; background-color: var(--board-bg); 
-            border: 4px double var(--line-color); box-shadow: 0 10px 30px rgba(0,0,0,0.6); 
-            box-sizing: border-box;
-        }
-        #board-grid { 
-            position: absolute; top: 5%; left: 5%; right: 5%; bottom: 5%;
-            background-image: linear-gradient(var(--line-color) 1px, transparent 1px), linear-gradient(90deg, var(--line-color) 1px, transparent 1px);
-            background-size: 100% 12.5%, 14.2857% 100%; border-right: 1px solid var(--line-color); border-bottom: 1px solid var(--line-color);
-            pointer-events: none;
-            -webkit-mask-image: linear-gradient(to bottom, black 37.5%, transparent 37.5%, transparent 50%, black 50%);
-            mask-image: linear-gradient(to bottom, black 37.5%, transparent 37.5%, transparent 50%, black 50%);
-        }
-        #board-lines-h, #board-outline { position: absolute; top: 5%; left: 5%; right: 5%; bottom: 5%; pointer-events: none; }
-        #board-lines-h { background-image: linear-gradient(var(--line-color) 1px, transparent 1px); background-size: 100% 12.5%; }
-        #board-outline { border-left: 1px solid var(--line-color); border-right: 1px solid var(--line-color); }
-        #river { position: absolute; top: 38.75%; left: 5%; right: 5%; height: 11.25%; background-color: var(--river-bg); pointer-events: none; }
+        body { display: flex; flex-direction: column; align-items: center; justify-content: center; background-color: #2c3e50; margin: 0; padding: 10px; font-family: sans-serif; touch-action: none; color: white; }
+        
+        /* 十字稲妻 */
+        .thunder-line { position: absolute; background: white; box-shadow: 0 0 30px 10px #bf5af2, 0 0 60px 20px white; z-index: 2500; pointer-events: none; opacity: 0; }
+        .thunder-h { height: 8px; width: 100%; left: 0; animation: bolt-flash-multi 0.5s ease-out; }
+        .thunder-v { width: 8px; height: 100%; top: 0; animation: bolt-flash-multi 0.5s ease-out; }
+        @keyframes bolt-flash-multi { 0%, 20%, 40%, 60% { opacity: 0; transform: scale(1.5); } 10%, 30%, 50% { opacity: 1; transform: scale(1); filter: brightness(3); } 100% { opacity: 0; transform: scale(0.5); } }
+
+        #whiteout { position: fixed; top:0; left:0; width:100%; height:100%; background:white; opacity:0; pointer-events:none; z-index:2400; }
+        .whiteout-active { animation: whiteout-ani 0.5s ease-out; }
+        @keyframes whiteout-ani { 0% { opacity: 0; } 10% { opacity: 0.8; } 100% { opacity: 0; } }
+
+        @keyframes shake-anim { 0% { transform: translate(0, 0); } 25% { transform: translate(-6px, 6px); } 50% { transform: translate(6px, -6px); } 75% { transform: translate(-6px, -6px); } 100% { transform: translate(0, 0); } }
+        .shaking { animation: shake-anim 0.08s infinite; }
+        #warning-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255, 0, 0, 0.4); display: none; align-items: center; justify-content: center; z-index: 3000; pointer-events: none; }
+        .warning-text { font-size: 55px; color: #ff0000; text-shadow: 0 0 20px black, 0 0 10px white; animation: blink-fast 0.15s infinite; font-weight: 900; letter-spacing: 2px; text-align: center; width: 80%; }
+
+        #game-container { width: 90vw; max-width: 360px; aspect-ratio: 360 / 400; position: relative; background-color: var(--board-bg); border: 4px double var(--line-color); box-shadow: 0 10px 30px rgba(0,0,0,0.6); box-sizing: border-box; }
+        #board-grid { position: absolute; top: 5%; left: 5%; right: 5%; bottom: 5%; background-image: linear-gradient(var(--line-color) 1px, transparent 1px), linear-gradient(90deg, var(--line-color) 1px, transparent 1px); background-size: 100% 12.5%, 14.2857% 100%; border-right: 1px solid var(--line-color); border-bottom: 1px solid var(--line-color); pointer-events: none; -webkit-mask-image: linear-gradient(to bottom, black 37.5%, transparent 37.5%, transparent 50%, black 50%); mask-image: linear-gradient(to bottom, black 37.5%, transparent 37.5%, transparent 50%, black 50%); }
+        #river { position: absolute; top: 38.75%; left: 5%; right: 5%; height: 11.25%; background-color: var(--river-bg); pointer-events: none; border-top: 1px solid var(--line-color); border-bottom: 1px solid var(--line-color); }
         .point { position: absolute; width: 6px; height: 6px; background-color: var(--line-color); border-radius: 50%; transform: translate(-50%, -50%); opacity: 0.4; z-index: 2; }
         
-        .piece-ui { 
-            width: 34px; height: 34px; border-radius: 50%; display: flex; justify-content: center; align-items: center; 
-            color: white; font-weight: 900; font-size: 18px; text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
-            box-shadow: 0 4px 8px rgba(0,0,0,0.4); user-select: none; -webkit-user-select: none;
-        }
+        .piece-ui { width: 34px; height: 34px; border-radius: 50%; display: flex; justify-content: center; align-items: center; color: #fff; font-weight: 600; font-size: 18px; text-shadow: 1px 1px 2px #000; box-shadow: 0 3px 6px rgba(0,0,0,0.4); border: 1.5px solid rgba(220, 220, 220, 0.8); user-select: none; box-sizing: border-box; }
         .piece-ui.blue { background: var(--blue-piece); }
         .piece-ui.red { background: var(--red-piece); }
+        .piece { position: absolute; transform: translate(-50%, -50%); cursor: grab; z-index: 30; touch-action: none; transition: left 0.1s, top 0.1s; }
+        .piece.enemy-moving { transition: left 0.6s ease-in, top 0.6s ease-in !important; z-index: 100 !important; }
+
+        .awake-active { background: radial-gradient(circle at 30% 30%, #9b59b6, #6c3483) !important; animation: glow-purple 0.3s infinite alternate; box-shadow: 0 0 25px #bf5af2; border: 2.5px solid white !important; z-index: 41 !important; }
+        .taiko-active { background: radial-gradient(circle at 30% 30%, #f1c40f, #f39c12) !important; animation: glow-gold 0.5s infinite alternate; box-shadow: 0 0 20px #f1c40f; border: 2.5px solid white !important; z-index: 40 !important; }
+
+        .marker { border-radius: 50%; position: absolute; transform: translate(-50%, -50%); pointer-events: none; z-index: 20; box-sizing: border-box; }
+        .marker.danger { width: 42px; height: 42px; background-color: rgba(255, 0, 0, 0.2); border: 3px solid #ff0000; }
+        .marker.safe { width: 22px; height: 22px; background-color: rgba(255, 235, 59, 0.8); border: 2px solid #fff; }
+        .marker.best { width: 40px; height: 40px; border: 3px solid #4caf50; background-color: rgba(76, 175, 80, 0.4); animation: pulse-best 1.5s infinite; }
+        .marker.aim { width: 40px; height: 40px; border: 3px dashed #4caf50; background-color: rgba(76, 175, 80, 0.1); animation: pulse-best 2s infinite linear; }
         
-        .piece { position: absolute; transform: translate(-50%, -50%); cursor: grab; z-index: 20; touch-action: none; }
-        .danger-piece { animation: piece-danger-blink 0.8s infinite alternate; border: 2px solid #ff4444; }
-        @keyframes piece-danger-blink { from { box-shadow: 0 0 5px #f00; } to { box-shadow: 0 0 25px #f00; transform: translate(-50%, -50%) scale(1.08); } }
-        
-        /* マーカーのデザイン設定（修正済） */
-        .marker { border-radius: 50%; position: absolute; transform: translate(-50%, -50%); pointer-events: none; z-index: 15; border: 2px solid #fff; }
-        .marker.danger { width: 34px; height: 34px; background-color: rgba(255, 0, 0, 0.2); border: 2px solid #ff0000; box-shadow: 0 0 10px #f00; }
-        .marker.safe { width: 22px; height: 22px; background-color: rgba(255, 235, 59, 0.8); }
-        .marker.best { 
-            width: 38px; height: 38px; background-color: rgba(76, 175, 80, 0.4); 
-            border: 3px solid #4caf50; box-shadow: 0 0 15px #4caf50;
-            animation: pulse-best 1.5s infinite;
+        /* 敵駒ガイド：小さめのグレー・スクエア */
+        .marker.guide { 
+            width: 24px; height: 24px; border-radius: 3px;
+            border: 1.5px solid rgba(160, 160, 160, 0.8);
+            background-color: rgba(200, 200, 200, 0.2);
+            box-shadow: 0 0 5px rgba(0, 0, 0, 0.3);
+            animation: guide-pulse 1.2s infinite;
         }
-        @keyframes pulse-best { 0%, 100% { transform: translate(-50%, -50%) scale(0.9); } 50% { transform: translate(-50%, -50%) scale(1.1); } }
+        @keyframes guide-pulse { 0%, 100% { opacity: 0.5; transform: translate(-50%, -50%) scale(0.95); } 50% { opacity: 1; transform: translate(-50%, -50%) scale(1); } }
         
-        #palette { margin-top: 15px; display: flex; gap: 6px; background: rgba(255,255,255,0.1); padding: 12px; border-radius: 10px; flex-wrap: wrap; justify-content: center; }
-        .palette-item { cursor: pointer; touch-action: none; }
-        .reset-btn { background: #e74c3c; font-size: 20px; width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; color: white; border: 2px solid #c0392b; }
-        .reset-btn.drag-over { background: #ff0000; transform: scale(1.2); }
+        #top-controls { width: 90vw; max-width: 360px; display: flex; justify-content: flex-end; gap: 8px; margin-bottom: 10px; }
+        .ctrl-btn { font-size: 18px; width: 42px; height: 42px; border-radius: 8px; display: flex; align-items: center; justify-content: center; cursor: pointer; user-select: none; border: 1px solid rgba(255,255,255,0.2); color: white; background: #555; transition: all 0.2s; }
+        #awake-btn.active { background: #9b59b6; box-shadow: 0 0 15px #9b59b6; }
+        #taiko-btn.active { background: #f1c40f; box-shadow: 0 0 15px #f1c40f; }
+        #palette { margin-top: 15px; display: flex; gap: 6px; background: rgba(255,255,255,0.1); padding: 12px; border-radius: 10px; flex-wrap: wrap; justify-content: center; width: 90vw; max-width: 360px; box-sizing: border-box; }
+        #drum-cutin { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 160px; pointer-events: none; z-index: 2000; display: none; }
+        .drum-show { display: block !important; animation: drum-show-ani 1s forwards; }
+        .zap-particle { position: absolute; width: 2px; height: 15px; background: #fff; box-shadow: 0 0 10px #bf5af2; border-radius: 2px; pointer-events: none; z-index: 1000; animation: zap-ani 0.2s ease-out forwards; }
+        .blast { position: absolute; border-radius: 50%; transform: translate(-50%, -50%); pointer-events: none; z-index: 60; animation: blast-ani 0.5s ease-out forwards; }
+        .blast.red { border: 10px solid #ff0000; box-shadow: 0 0 40px #f00; }
+        .blast.gold { border: 5px solid #f1c40f; }
+        .blast.purple { border: 5px solid #9b59b6; }
+        @keyframes blast-ani { 0% { width: 0; height: 0; opacity: 1; border-width: 20px; } 100% { width: 350px; height: 300px; opacity: 0; border-width: 1px; } }
     </style>
 </head>
 <body>
-<div id="game-container"><div id="board-grid"></div><div id="board-lines-h"></div><div id="board-outline"></div><div id="river"></div></div>
+<div id="whiteout"></div>
+<div id="warning-overlay"><div class="warning-text">WARNING</div></div>
+<div id="drum-cutin">🥁</div>
+<div id="top-controls">
+    <div id="awake-btn" class="ctrl-btn">🔥</div>
+    <div id="taiko-btn" class="ctrl-btn">🥁</div>
+    <div id="undo-btn" class="ctrl-btn" style="background:#3498db">⟲</div>
+    <div id="redo-btn" class="ctrl-btn" style="background:#3498db">⟳</div>
+    <div id="trash-can" class="ctrl-btn" style="background:#e74c3c">🗑️</div>
+</div>
+<div id="game-container"><div id="board-grid"></div><div id="river"></div></div>
 <div id="palette">
     <div class="palette-item piece-ui blue" data-side="blue" data-type="車">車</div>
     <div class="palette-item piece-ui red" data-side="red" data-type="卒">卒</div>
     <div class="palette-item piece-ui red" data-side="red" data-type="士">士</div>
     <div class="palette-item piece-ui red" data-side="red" data-type="馬">馬</div>
     <div class="palette-item piece-ui red" data-side="red" data-type="象">象</div>
+    <div class="palette-item piece-ui red" data-side="red" data-type="砲">砲</div>
     <div class="palette-item piece-ui red" data-side="red" data-type="車">車</div>
     <div class="palette-item piece-ui red" data-side="red" data-type="将">将</div>
-    <div class="palette-item piece-ui red" data-side="red" data-type="砲">砲</div>
-    <div id="trash-can" class="reset-btn">🗑️</div>
 </div>
 <script>
-    const container = document.getElementById('game-container'), trashCan = document.getElementById('trash-can');
+    const container = document.getElementById('game-container'), warningOverlay = document.getElementById('warning-overlay'), drumCutin = document.getElementById('drum-cutin'), trashBtn = document.getElementById('trash-can'), whiteout = document.getElementById('whiteout');
     const COLS = 8, ROWS = 9;
-    let pieces = [], activeDrag = null, draggedPieceId = null;
-    const DIRS_4 = [[0, -1], [0, 1], [1, 0], [-1, 0]]; 
-    const DIAG_4 = [[1, -1], [1, 1], [-1, 1], [-1, -1]];
-    const HORSE_8 = [[1, -2], [2, -1], [2, 1], [1, 2], [-1, 2], [-2, 1], [-2, -1], [-1, -2]];
+    const D_UP = [0, -1]; const D_DOWN = [0, 1]; const D_LEFT = [-1, 0]; const D_RIGHT = [1, 0];
+    const DIRS_4 = [D_UP, D_DOWN, D_LEFT, D_RIGHT];
+    const DIRS_HORSE = [[1, -2], [-1, -2], [1, 2], [-1, 2], [2, -1], [-2, -1], [2, 1], [-2, 1]];
+    const DIRS_ELEPH = [[-2, -2], [2, -2], [-2, 2], [2, 2]];
+    const DIRS_DIAG = [[-1, -1], [1, -1], [-1, 1], [1, 1]];
+
+    let pieces = [], history = [{p:[]}], hIdx = 0, isTaiko = false, isAwake = false, isAnimating = false, draggedPieceId = null;
 
     function init() {
-        for (let y = 0; y < ROWS; y++) {
-            for (let x = 0; x < COLS; x++) {
-                const dot = document.createElement('div');
-                dot.className = 'point';
-                dot.style.left = `${5 + (x/7)*90}%`; dot.style.top = `${5 + (y/8)*90}%`;
-                container.appendChild(dot);
-            }
+        for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) {
+            const dot = document.createElement('div'); dot.className = 'point';
+            dot.style.left = (5 + (x / 7) * 90) + '%'; dot.style.top = (5 + (y / 8) * 90) + '%';
+            container.appendChild(dot);
         }
-        setupEvents();
+        setupEvents(); setInterval(animatePlasma, 60);
+    }
+
+    function animatePlasma() {
+        if (!isAwake || isAnimating) return;
+        const blue = pieces.find(p => p.side === 'blue');
+        if (blue && blue.id !== draggedPieceId) createZap((5 + (blue.x / 7) * 90) + '%', (5 + (blue.y / 8) * 90) + '%', true);
+    }
+
+    function createZap(l, t, isB) {
+        const p = document.createElement('div'); p.className = 'zap-particle';
+        if (isB) { p.style.left = l; p.style.top = t; } else { p.style.left = l + 'px'; p.style.top = t + 'px'; p.style.position = 'fixed'; }
+        const r = Math.random() * 360, d = 10 + Math.random() * 15, a = Math.random() * Math.PI * 2;
+        p.style.setProperty('--rot', r + 'deg'); p.style.setProperty('--dx', Math.cos(a) * d + 'px'); p.style.setProperty('--dy', Math.sin(a) * d + 'px');
+        (isB ? container : document.body).appendChild(p); setTimeout(() => p.remove(), 200);
+    }
+
+    function triggerThunderbolt(x, y) {
+        whiteout.classList.remove('whiteout-active'); void whiteout.offsetWidth; whiteout.classList.add('whiteout-active');
+        const h = document.createElement('div'); h.className = 'thunder-line thunder-h'; h.style.top = (5 + (y / 8) * 90) + '%';
+        const v = document.createElement('div'); v.className = 'thunder-line thunder-v'; v.style.left = (5 + (x / 7) * 90) + '%';
+        container.appendChild(h); container.appendChild(v); document.body.classList.add('shaking');
+        setTimeout(() => { h.remove(); v.remove(); document.body.classList.remove('shaking'); }, 500);
     }
 
     function setupEvents() {
-        document.querySelectorAll('.palette-item').forEach(el => { el.onpointerdown = (e) => handleStart(e, el.dataset.side, el.dataset.type); });
-        trashCan.onclick = resetBoard;
-        window.onpointermove = handleMove; window.onpointerup = handleEnd;
+        document.querySelectorAll('.palette-item').forEach(el => el.onpointerdown = (e) => !isAnimating && handleStart(e, el.dataset.side, el.dataset.type));
+        trashBtn.onclick = () => { if (!isAnimating && confirm("全削除しますか？")) { pieces = []; saveH(); render(); } };
+        document.getElementById('undo-btn').onclick = () => !isAnimating && hIdx > 0 && (hIdx--, applyH());
+        document.getElementById('redo-btn').onclick = () => !isAnimating && hIdx < history.length - 1 && (hIdx++, applyH());
+        document.getElementById('taiko-btn').onclick = () => { if (!isAnimating) { isTaiko = !isTaiko; if (isTaiko) { drumCutin.classList.add('drum-show'); setTimeout(() => drumCutin.classList.remove('drum-show'), 1000); } updateUI(); render(); } };
+        document.getElementById('awake-btn').onclick = () => { if (!isAnimating) { isAwake = !isAwake; updateUI(); render(); } };
+        window.onpointermove = (e) => !isAnimating && handleMove(e);
+        window.onpointerup = (e) => !isAnimating && handleEnd(e);
     }
 
-    function handleStart(e, side, type, id = null) {
-        e.preventDefault(); draggedPieceId = id;
-        const pData = pieces.find(p => p.id === id);
-        activeDrag = { side, type, id, startX: pData ? pData.x : -1, startY: pData ? pData.y : -1, element: createGhost(type, side, e.clientX, e.clientY) };
-        render();
+    function updateUI() { document.getElementById('taiko-btn').classList.toggle('active', isTaiko); document.getElementById('awake-btn').classList.toggle('active', isAwake); }
+    function saveH() { history = history.slice(0, hIdx + 1); history.push({ p: JSON.parse(JSON.stringify(pieces)) }); hIdx++; }
+    function applyH() { pieces = JSON.parse(JSON.stringify(history[hIdx].p)); render(); }
+
+    function handleStart(e, s, t, id = null) {
+        e.preventDefault(); draggedPieceId = id; const pD = pieces.find(p => p.id === id);
+        window.activeDrag = { side: s, type: t, id, startX: pD ? pD.x : -1, startY: pD ? pD.y : -1, element: createGhost(t, s, e.clientX, e.clientY) };
+        render(); if (s === 'red' && id !== null) showEnemyGuide(pD);
     }
 
-    function createGhost(type, side, x, y) {
-        const ghost = document.createElement('div'); ghost.className = `piece-ui ${side}`; ghost.innerText = type;
-        ghost.style.position = 'fixed'; ghost.style.left = x + 'px'; ghost.style.top = y + 'px';
-        ghost.style.transform = 'translate(-50%, -50%) scale(1.2)'; ghost.style.opacity = '0.8';
-        ghost.style.zIndex = '1000'; ghost.style.pointerEvents = 'none';
-        document.body.appendChild(ghost); return ghost;
+    function createGhost(t, s, x, y) {
+        const g = document.createElement('div'); g.className = `piece-ui ${s}`;
+        if (s === 'blue') { if (isAwake) g.classList.add('awake-active'); else if (isTaiko) g.classList.add('taiko-active'); }
+        g.innerText = t; g.style.position = 'fixed'; g.style.left = x + 'px'; g.style.top = y + 'px'; g.style.transform = 'translate(-50%, -50%) scale(1.2)'; g.style.zIndex = '1000'; g.style.pointerEvents = 'none';
+        document.body.appendChild(g); return g;
     }
 
-    function handleMove(e) {
-        if (!activeDrag) return;
-        activeDrag.element.style.left = e.clientX + 'px'; activeDrag.element.style.top = e.clientY + 'px';
-        const tRect = trashCan.getBoundingClientRect();
-        if (e.clientX >= tRect.left && e.clientX <= tRect.right && e.clientY >= tRect.top && e.clientY <= tRect.bottom) trashCan.classList.add('drag-over');
-        else trashCan.classList.remove('drag-over');
-    }
+    function handleMove(e) { if (!window.activeDrag) return; window.activeDrag.element.style.left = e.clientX + 'px'; window.activeDrag.element.style.top = e.clientY + 'px'; if (isAwake && window.activeDrag.side === 'blue') createZap(e.clientX, e.clientY, false); }
 
     function handleEnd(e) {
-        if (!activeDrag) return;
-        const rect = container.getBoundingClientRect(), tRect = trashCan.getBoundingClientRect();
-        activeDrag.element.remove(); trashCan.classList.remove('drag-over');
-        if (e.clientX >= tRect.left && e.clientX <= tRect.right && e.clientY >= tRect.top && e.clientY <= tRect.bottom) {
-            if (activeDrag.id) pieces = pieces.filter(p => p.id !== activeDrag.id);
+        if (!window.activeDrag) return;
+        const rect = container.getBoundingClientRect(), tr = trashBtn.getBoundingClientRect(); window.activeDrag.element.remove();
+        if (e.clientX >= tr.left && e.clientX <= tr.right && e.clientY >= tr.top && e.clientY <= tr.bottom) {
+            if (window.activeDrag.id) { pieces = pieces.filter(p => p.id !== window.activeDrag.id); saveH(); }
         } else {
-            const x = Math.round((((e.clientX - rect.left) / rect.width) - 0.05) / 0.9 * 7);
-            const y = Math.round((((e.clientY - rect.top) / rect.height) - 0.05) / 0.9 * 8);
+            const x = Math.round((((e.clientX - rect.left) / rect.width) - 0.05) / 0.9 * 7), y = Math.round((((e.clientY - rect.top) / rect.height) - 0.05) / 0.9 * 8);
             if (x >= 0 && x < COLS && y >= 0 && y < ROWS) {
-                if (!(activeDrag.id && activeDrag.startX === x && activeDrag.startY === y)) {
-                    if (activeDrag.side === 'blue') pieces = pieces.filter(p => p.side !== 'blue');
-                    pieces = pieces.filter(p => !(p.x === x && p.y === y) && p.id !== activeDrag.id);
-                    pieces.push({ id: activeDrag.id || Date.now(), side: activeDrag.side, type: activeDrag.type, x, y });
+                if (!(window.activeDrag.id && window.activeDrag.startX === x && window.activeDrag.startY === y)) {
+                    if (window.activeDrag.side === 'blue') pieces = pieces.filter(p => p.side !== 'blue');
+                    let killedGeneral = false;
+                    if (window.activeDrag.side === 'blue' && window.activeDrag.id !== null) {
+                        const dx = Math.sign(x - window.activeDrag.startX), dy = Math.sign(y - window.activeDrag.startY);
+                        if (isTaiko && (dx !== 0 || dy !== 0)) {
+                            let tx = window.activeDrag.startX, ty = window.activeDrag.startY;
+                            while (tx !== x || ty !== y) {
+                                tx += dx; ty += dy; const vIdx = pieces.findIndex(p => p.x === tx && p.y === ty && p.side === 'red');
+                                if (vIdx !== -1) { if (pieces[vIdx].type === '将') killedGeneral = true; triggerBlast(tx, ty, pieces[vIdx].type === '将' ? 'purple' : 'gold'); pieces.splice(vIdx, 1); }
+                            }
+                        } else {
+                            const target = pieces.find(p => p.x === x && p.y === y && p.side === 'red'); if (target && target.type === '将') killedGeneral = true;
+                        }
+                        if (isAwake) { triggerThunderbolt(x, y); pieces = pieces.filter(p => !(p.side === 'red' && (p.x === x || p.y === y))); isAwake = false; }
+                    }
+                    pieces = pieces.filter(p => !(p.x === x && p.y === y) && p.id !== window.activeDrag.id);
+                    pieces.push({ id: window.activeDrag.id || Date.now(), side: window.activeDrag.side, type: window.activeDrag.type, x, y });
+                    if (killedGeneral) isAwake = true; isTaiko = false; updateUI(); saveH();
+                    if (window.activeDrag.id !== null && window.activeDrag.side === 'blue') checkDefeat(pieces.find(p => p.side === 'blue'));
                 }
             }
         }
-        activeDrag = null; draggedPieceId = null; render();
+        window.activeDrag = null; draggedPieceId = null; render();
     }
 
-    function resetBoard() { if(confirm("盤面をリセットしますか？")) { pieces = []; render(); } }
+    function checkDefeat(blue) {
+        if (!blue) return; const amap = getAttackMap(pieces, 'red');
+        if (amap.has(blue.x + ',' + blue.y)) {
+            isAnimating = true; warningOverlay.style.display = 'flex'; document.body.classList.add('shaking');
+            setTimeout(() => {
+                warningOverlay.style.display = 'none'; document.body.classList.remove('shaking');
+                const enemy = pieces.find(e => e.side === 'red' && getAttackMap(pieces, 'red', e).has(blue.x + ',' + blue.y));
+                if (enemy) {
+                    const el = Array.from(document.querySelectorAll('.piece')).find(i => i.dataset.id == enemy.id);
+                    if (el) { el.classList.add('enemy-moving'); el.style.left = (5 + (blue.x / 7) * 90) + '%'; el.style.top = (5 + (blue.y / 8) * 90) + '%'; enemy.x = blue.x; enemy.y = blue.y; }
+                }
+                setTimeout(() => { triggerBlast(blue.x, blue.y, 'red'); pieces = pieces.filter(p => p.side !== 'blue'); isAnimating = false; saveH(); render(); }, 650);
+            }, 600);
+        }
+    }
 
-    function getAttackMap(currentPieces) {
-        const attackMap = new Set();
-        currentPieces.filter(p => p.side === 'red').forEach(p => {
-            const add = (nx, ny) => { if(nx>=0 && nx<COLS && ny>=0 && ny<ROWS) attackMap.add(`${nx},${ny}`); };
-            const checkAt = (nx, ny) => currentPieces.find(o => o.x === nx && o.y === ny);
-            switch(p.type) {
-                case '車': DIRS_4.forEach(([dx, dy]) => { for(let i=1; i<10; i++){ let nx=p.x+dx*i, ny=p.y+dy*i; if(nx<0||nx>=COLS||ny<0||ny>=ROWS) break; add(nx, ny); if(checkAt(nx, ny)) break; } }); break;
-                case '馬': HORSE_8.forEach(([dx, dy]) => { const cx=dx===2||dx===-2?dx/2:0, cy=dy===2||dy===-2?dy/2:0; if(!currentPieces.some(pc=>pc.x===p.x+cx&&pc.y===p.y+cy)) add(p.x+dx, p.y+dy); }); break;
-                case '砲': DIRS_4.forEach(([dx, dy]) => { let count=0; for(let i=1; i<10; i++){ let nx=p.x+dx*i, ny=p.y+dy*i; if(nx<0||nx>=COLS||ny<0||ny>=ROWS) break; const t=checkAt(nx, ny); if(count===0){ if(t) count=1; } else { add(nx, ny); if(t) break; } } }); break;
-                case '卒': case '将': DIRS_4.forEach(([dx, dy]) => add(p.x+dx, p.y+dy)); break;
-                case '象': DIAG_4.forEach(([dx, dy]) => { if(!currentPieces.some(pc=>pc.x===p.x+dx&&pc.y===p.y+dy)) add(p.x+dx*2, p.y+dy*2); }); break;
-                case '士': DIAG_4.forEach(([dx, dy]) => add(p.x+dx, p.y+dy)); break;
-            }
+    function getAttackMap(pList, side = 'red', singlePiece = null) {
+        const amap = new Set(); const targets = singlePiece ? [singlePiece] : pList.filter(p => p.side === side);
+        targets.forEach(p => {
+            const add = (nx, ny) => { if (nx >= 0 && nx < COLS && ny >= 0 && ny < ROWS) amap.add(nx + ',' + ny); };
+            const check = (nx, ny) => pList.find(o => o.x === nx && o.y === ny);
+            if (p.type === '車' || p.type === '将') DIRS_4.forEach(([dx, dy]) => { for (let i = 1; i < 10; i++) { let nx = p.x + dx * i, ny = p.y + dy * i; if (nx < 0 || nx >= COLS || ny < 0 || ny >= ROWS) break; add(nx, ny); if (check(nx, ny)) break; if (p.type === '将') break; } });
+            if (p.type === '砲') DIRS_4.forEach(([dx, dy]) => { let c = 0; for (let i = 1; i < 10; i++) { let nx = p.x + dx * i, ny = p.y + dy * i; if (nx < 0 || nx >= COLS || ny < 0 || ny >= ROWS) break; if (c === 0) { if (check(nx, ny)) c = 1; } else { add(nx, ny); if (check(nx, ny)) break; } } });
+            if (p.type === '馬') DIRS_HORSE.forEach(([dx, dy]) => { if (!check(p.x + ((Math.abs(dx) === 2) ? dx / 2 : 0), p.y + ((Math.abs(dy) === 2) ? dy / 2 : 0))) add(p.x + dx, p.y + dy); });
+            if (p.type === '象') DIRS_ELEPH.forEach(([dx, dy]) => { if (!check(p.x + dx / 2, p.y + dy / 2)) add(p.x + dx, p.y + dy); });
+            if (p.type === '士') DIRS_DIAG.forEach(([dx, dy]) => add(p.x + dx, p.y + dy));
+            if (p.type === '卒') DIRS_4.forEach(([dx, dy]) => add(p.x + dx, p.y + dy));
         });
-        return attackMap;
+        return amap;
+    }
+
+    function showEnemyGuide(p) {
+        const amap = new Set(); const check = (nx, ny) => pieces.find(o => o.x === nx && o.y === ny);
+        const addGuide = (nx, ny) => { if (nx >= 0 && nx < COLS && ny >= 0 && ny < ROWS) amap.add(nx + ',' + ny); };
+        if (p.type === '砲') {
+            DIRS_4.forEach(([dx, dy]) => {
+                let jump = false; for (let i = 1; i < 10; i++) {
+                    let nx = p.x + dx * i, ny = p.y + dy * i; if (nx < 0 || nx >= COLS || ny < 0 || ny >= ROWS) break;
+                    const target = check(nx, ny); if (!jump) { if (!target) addGuide(nx, ny); else jump = true; } else { if (target) { if (target.side === 'blue') addGuide(nx, ny); break; } }
+                }
+            });
+        } else { getAttackMap(pieces, 'red', p).forEach(pos => amap.add(pos)); }
+        amap.forEach(pos => {
+            const [gx, gy] = pos.split(',').map(Number); const m = document.createElement('div'); m.className = 'marker guide';
+            m.style.left = (5 + (gx / 7) * 90) + '%'; m.style.top = (5 + (gy / 8) * 90) + '%'; container.appendChild(m);
+        });
     }
 
     function render() {
         container.querySelectorAll('.piece, .marker').forEach(el => el.remove());
-        const attackMap = getAttackMap(pieces);
-        const myCar = pieces.find(p => p.side === 'blue');
+        const amap = getAttackMap(pieces, 'red'); const blue = pieces.find(p => p.side === 'blue');
         pieces.forEach(p => {
             if (p.id === draggedPieceId) return;
-            const el = document.createElement('div'); el.className = `piece piece-ui ${p.side}`;
-            if (p.side === 'blue' && attackMap.has(`${p.x},${p.y}`)) el.classList.add('danger-piece');
-            el.innerText = p.type; el.style.left = `${5 + (p.x/7)*90}%`; el.style.top = `${5 + (p.y/8)*90}%`;
-            el.onpointerdown = (e) => handleStart(e, p.side, p.type, p.id);
-            container.appendChild(el);
+            const el = document.createElement('div'); el.className = 'piece piece-ui ' + p.side; el.dataset.id = p.id;
+            if (p.side === 'blue') {
+                if (isAwake) el.classList.add('awake-active'); else if (isTaiko) el.classList.add('taiko-active');
+                if (!isAwake && !isTaiko && amap.has(p.x + ',' + p.y)) el.style.boxShadow = "0 0 15px #f00";
+            }
+            el.innerText = p.type; el.style.left = (5 + (p.x / 7) * 90) + '%'; el.style.top = (5 + (p.y / 8) * 90) + '%';
+            el.onpointerdown = (e) => !isAnimating && handleStart(e, p.side, p.type, p.id); container.appendChild(el);
         });
-        if (myCar) calculateMoves(myCar);
+        if (blue && !isAnimating) calculateMoves(blue);
     }
 
     function calculateMoves(car) {
-        const cands = [];
         DIRS_4.forEach(([dx, dy]) => {
+            let tx = car.x, ty = car.y;
             for (let i = 1; i < 10; i++) {
-                let nx=car.x+dx*i, ny=car.y+dy*i; if(nx<0||nx>=COLS||ny<0||ny>=ROWS) break;
-                const target = pieces.find(p => p.x === nx && p.y === ny);
-                if (target?.side === 'blue') break;
-                const future = pieces.map(p => p.side === 'blue' ? { ...p, x: nx, y: ny } : p);
-                const amap = getAttackMap(future); const isSafe = !amap.has(`${nx},${ny}`);
-                let score = 0;
-                if (isSafe) {
-                    score += 10;
-                    if (target?.side === 'red') { score += 1000; } 
-                    else {
-                        DIRS_4.forEach(([adx, ady]) => {
-                            for (let j = 1; j < 10; j++) {
-                                let ax=nx+adx*j, ay=ny+ady*j; if(ax<0||ax>=COLS||ay<0||ay>=ROWS) break;
-                                const t = future.find(p => p.x === ax && p.y === ay);
-                                if (t && t.side === 'red') {
-                                    if (!getAttackMap(future.map(p => p.side === 'blue' ? { ...p, x: ax, y: ay } : p)).has(`${ax},${ay}`)) score += 100;
-                                    break;
-                                }
-                                if (t) break;
-                            }
-                        });
+                tx += dx; ty += dy; if (tx < 0 || tx >= COLS || ty < 0 || ty >= ROWS) break;
+                const target = pieces.find(p => p.x === tx && p.y === ty);
+                if (!isTaiko && target?.side === 'blue') break;
+                let sim = JSON.parse(JSON.stringify(pieces)), k = 0;
+                if (isTaiko) {
+                    let sx = car.x, sy = car.y; while (sx !== tx || sy !== ty) {
+                        sx += dx; sy += dy; const vIdx = sim.findIndex(p => p.x === sx && p.y === sy && p.side === 'red');
+                        if (vIdx !== -1) { k++; sim.splice(vIdx, 1); }
                     }
+                } else if (target?.side === 'red') { k = 1; sim = sim.filter(p => p.id !== target.id); }
+                if (isAwake) { sim = sim.filter(p => !(p.side === 'red' && (p.x === tx || p.y === ty))); }
+                sim = sim.map(p => p.side === 'blue' ? { ...p, x: tx, y: ty } : p);
+                const safe = !getAttackMap(sim, 'red').has(tx + ',' + ty);
+                let mType = safe ? (k > 0 ? "best" : "safe") : "danger";
+                if (safe && k === 0) {
+                    let aim = false; DIRS_4.forEach(([adx, ady]) => {
+                        let ax = tx, ay = ty; for (let j = 1; j < 11; j++) {
+                            ax += adx; ay += ady; if (ax < 0 || ax >= COLS || ay < 0 || ay >= ROWS) break;
+                            const nt = sim.find(p => p.x === ax && p.y === ay);
+                            if (nt?.side === 'red') {
+                                let sim2 = sim.filter(p => p.id !== nt.id).map(p => p.side === 'blue' ? { ...p, x: ax, y: ay } : p);
+                                if (!getAttackMap(sim2, 'red').has(ax + ',' + ay)) aim = true; break;
+                            } else if (nt?.side === 'blue') break;
+                        }
+                    });
+                    if (aim) mType = "aim";
                 }
-                cands.push({ x: nx, y: ny, isDanger: !isSafe, score });
-                if (target) break;
+                const m = document.createElement('div'); m.className = 'marker ' + mType;
+                m.style.left = (5 + (tx / 7) * 90) + '%'; m.style.top = (5 + (ty / 8) * 90) + '%'; container.appendChild(m);
+                if (!isTaiko && target) break;
             }
         });
-        const safeCands = cands.filter(c => !c.isDanger);
-        const maxS = safeCands.length ? Math.max(...safeCands.map(c => c.score)) : 0;
-        cands.forEach(c => {
-            const m = document.createElement('div');
-            let isBest = !c.isDanger && c.score >= 100 && c.score === maxS;
-            m.className = `marker ${c.isDanger ? 'danger' : (isBest ? 'best' : 'safe')}`;
-            m.style.left = `${5 + (c.x/7)*90}%`; m.style.top = `${5 + (c.y/8)*90}%`;
-            container.appendChild(m);
-        });
+    }
+
+    function triggerBlast(x, y, c) {
+        const b = document.createElement('div'); b.className = 'blast ' + c; b.style.left = (5 + (x / 7) * 90) + '%'; b.style.top = (5 + (y / 8) * 90) + '%';
+        container.appendChild(b); setTimeout(() => b.remove(), 600);
     }
     init();
 </script>
