@@ -1,0 +1,345 @@
+<!-- VERSION: v3.0.0 (Google Gemini AI Integration) -->
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>シャンチー AI v3.0.0</title>
+    <style>
+        :root {
+            --board-bg: #f5deb3;
+            --river-bg: rgba(100, 180, 255, 0.25);
+            --line-color: #5d4037;
+            --blue-piece: radial-gradient(circle at 30% 30%, #4a90e2, #1a5a9e);
+            --red-piece: radial-gradient(circle at 30% 30%, #e74c3c, #96281b);
+        }
+        * { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; }
+        html, body { position: fixed; width: 100%; height: 100%; overflow: hidden; overscroll-behavior: none; }
+        body { display: flex; flex-direction: column; align-items: center; justify-content: flex-start; background-color: #2c3e50; margin: 0; padding: 15px 10px 10px 10px; font-family: sans-serif; touch-action: none; color: white; }
+        
+        /* AI 設定パネル */
+        #ai-panel { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #34495e; padding: 20px; border-radius: 12px; border: 2px solid #3498db; z-index: 8000; display: none; width: 80%; max-width: 300px; box-shadow: 0 0 50px rgba(0,0,0,0.8); }
+        #ai-panel h3 { margin-top: 0; color: #3498db; }
+        #ai-panel input { width: 100%; padding: 8px; margin: 10px 0; border-radius: 4px; border: none; box-sizing: border-box; }
+        #ai-panel .btn-group { display: flex; gap: 10px; justify-content: flex-end; }
+        #ai-panel button { padding: 8px 15px; border-radius: 4px; border: none; cursor: pointer; }
+
+        /* AI 思考中オーバーレイ */
+        #ai-loading { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 7000; }
+        .spinner { width: 40px; height: 40px; border: 4px solid #f3f3f3; border-top: 4px solid #3498db; border-radius: 50%; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* 既存UI継承 */
+        #legend { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 8px; padding: 6px; background: rgba(0,0,0,0.4); border-radius: 6px; width: 95vw; max-width: 380px; font-size: 13px; border: 1px solid rgba(255,255,255,0.1); }
+        .leg-item { display: flex; align-items: center; gap: 4px; color: #eee; }
+        .leg-dot { width: 14px; height: 14px; border-radius: 50%; box-sizing: border-box; }
+        .leg-sq { width: 14px; height: 14px; border: 1.5px solid rgba(160,160,160,1); border-radius: 3px; background: rgba(200,200,200,0.3); }
+
+        /* 特殊演出 */
+        .thunder-line { position: absolute; background: white; box-shadow: 0 0 30px 10px #bf5af2, 0 0 60px 20px white; z-index: 2500; pointer-events: none; opacity: 0; }
+        .thunder-h { height: 8px; width: 100%; left: 0; animation: bolt-flash-multi 0.5s ease-out; }
+        .thunder-v { width: 8px; height: 100%; top: 0; animation: bolt-flash-multi 0.5s ease-out; }
+        @keyframes bolt-flash-multi { 0%, 20%, 40%, 60% { opacity: 0; transform: scale(1.5); } 10%, 30%, 50% { opacity: 1; transform: scale(1); filter: brightness(3); } 100% { opacity: 0; transform: scale(0.5); } }
+        #whiteout { position: fixed; top:0; left:0; width:100%; height:100%; background:white; opacity:0; pointer-events:none; z-index:2400; }
+        .whiteout-active { animation: whiteout-ani 0.5s ease-out; }
+        @keyframes whiteout-ani { 0% { opacity: 0; } 10% { opacity: 0.8; } 100% { opacity: 0; } }
+
+        #game-container { width: 90vw; max-width: 360px; aspect-ratio: 360 / 400; position: relative; background-color: var(--board-bg); border: 4px double var(--line-color); box-shadow: 0 10px 30px rgba(0,0,0,0.6); box-sizing: border-box; touch-action: none; }
+        #board-grid { position: absolute; top: 5%; left: 5%; right: 5%; bottom: 5%; background-image: linear-gradient(var(--line-color) 1px, transparent 1px), linear-gradient(90deg, var(--line-color) 1px, transparent 1px); background-size: 100% 12.5%, 14.2857% 100%; border-right: 1px solid var(--line-color); border-bottom: 1px solid var(--line-color); pointer-events: none; -webkit-mask-image: linear-gradient(to bottom, black 37.5%, transparent 37.5%, transparent 50%, black 50%); mask-image: linear-gradient(to bottom, black 37.5%, transparent 37.5%, transparent 50%, black 50%); }
+        #river { position: absolute; top: 38.75%; left: 5%; right: 5%; height: 11.25%; background-color: var(--river-bg); pointer-events: none; border-top: 1px solid var(--line-color); border-bottom: 1px solid var(--line-color); }
+        .point { position: absolute; width: 6px; height: 6px; background-color: var(--line-color); border-radius: 50%; transform: translate(-50%, -50%); opacity: 0.4; z-index: 2; }
+        .piece-ui { width: 34px; height: 34px; border-radius: 50%; display: flex; justify-content: center; align-items: center; color: #fff; font-weight: 600; font-size: 18px; text-shadow: 1px 1px 2px #000; box-shadow: 0 3px 6px rgba(0,0,0,0.4); border: 1.5px solid rgba(220, 220, 220, 0.8); box-sizing: border-box; touch-action: none; }
+        .piece-ui.blue { background: var(--blue-piece); }
+        .piece-ui.red { background: var(--red-piece); }
+        .piece { position: absolute; transform: translate(-50%, -50%); cursor: grab; z-index: 30; transition: left 0.1s, top 0.1s; }
+
+        .marker { border-radius: 50%; position: absolute; transform: translate(-50%, -50%); pointer-events: none; z-index: 20; box-sizing: border-box; }
+        .marker.safe { width: 22px; height: 22px; background: rgba(255, 235, 59, 0.9); border: 2px solid #fff; }
+        .marker.best { width: 40px; height: 40px; border: 3px solid #4caf50; background: rgba(76, 175, 80, 0.4); }
+        .marker.aim { width: 38px; height: 38px; border: 3px dotted #4caf50; background: rgba(76, 175, 80, 0.1); }
+        .marker.danger { width: 42px; height: 42px; background: rgba(255, 0, 0, 0.2); border: 3px solid #ff0000; }
+        /* AI推奨マーカー（青い輪） */
+        .marker.ai-best { width: 46px; height: 46px; border: 4px double #3498db; background: rgba(52, 152, 219, 0.2); animation: ai-pulse 1s infinite; }
+        @keyframes ai-pulse { 0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: 1; } 50% { transform: translate(-50%, -50%) scale(1.1); opacity: 0.7; } }
+
+        #top-controls { width: 90vw; max-width: 360px; display: flex; justify-content: flex-end; gap: 8px; margin-bottom: 5px; margin-top: 2px; }
+        .ctrl-btn { font-size: 18px; width: 42px; height: 42px; border-radius: 8px; display: flex; align-items: center; justify-content: center; cursor: pointer; border: 1px solid rgba(255,255,255,0.2); color: white; background: #555; transition: all 0.2s; touch-action: manipulation; }
+        #ai-btn { background: #3498db; box-shadow: 0 0 10px rgba(52, 152, 219, 0.5); }
+        #setting-btn { background: #7f8c8d; }
+        #palette { margin-top: 8px; display: flex; gap: 6px; background: rgba(255,255,255,0.1); padding: 10px; border-radius: 10px; flex-wrap: wrap; justify-content: center; width: 90vw; max-width: 360px; box-sizing: border-box; }
+    </style>
+</head>
+<body>
+<div id="whiteout"></div>
+<div id="warning-overlay"><div class="warning-text">WARNING</div></div>
+<div id="ai-loading"><div class="spinner"></div><p>AI思考中...</p></div>
+
+<!-- API設定パネル -->
+<div id="ai-panel">
+    <h3>Gemini API 設定</h3>
+    <p style="font-size: 12px; color: #bdc3c7;">Google AI Studioで取得したAPIキーを入力してください。</p>
+    <input type="password" id="api-key-input" placeholder="ここにAPIキーを貼り付け">
+    <div class="btn-group">
+        <button onclick="closeSettings()" style="background:#95a5a6;">閉じる</button>
+        <button onclick="saveApiKey()" style="background:#3498db; color:white;">保存</button>
+    </div>
+</div>
+
+<div id="top-controls">
+    <div id="ai-btn" class="ctrl-btn" title="AIに聞く">🧠</div>
+    <div id="setting-btn" class="ctrl-btn" title="設定">⚙️</div>
+    <div id="undo-btn" class="ctrl-btn">⟲</div>
+    <div id="redo-btn" class="ctrl-btn">⟳</div>
+    <div id="trash-can" class="ctrl-btn" style="background:#e74c3c">🗑️</div>
+</div>
+<!-- (後半へ続く) -->
+<div id="game-container"><div id="board-grid"></div><div id="river"></div></div>
+<div id="palette">
+    <div class="palette-item piece-ui blue" data-side="blue" data-type="車">車</div>
+    <div class="palette-item piece-ui red" data-side="red" data-type="卒">卒</div>
+    <div class="palette-item piece-ui red" data-side="red" data-type="士">士</div>
+    <div class="palette-item piece-ui red" data-side="red" data-type="馬">馬</div>
+    <div class="palette-item piece-ui red" data-side="red" data-type="象">象</div>
+    <div class="palette-item piece-ui red" data-side="red" data-type="砲">砲</div>
+    <div class="palette-item piece-ui red" data-side="red" data-type="車">車</div>
+    <div class="palette-item piece-ui red" data-side="red" data-type="将">将</div>
+</div>
+<div id="legend">
+    <div class="leg-item"><div class="leg-dot" style="border:3px solid #4caf50; background:rgba(76,175,80,0.4)"></div>撃破</div>
+    <div class="leg-item"><div class="leg-dot" style="border:3px dotted #4caf50; background:rgba(76,175,80,0.1)"></div>候補</div>
+    <div class="leg-item"><div class="leg-dot" style="border:2px solid #fff; background:rgba(255,235,59,0.9)"></div>可</div>
+    <div class="leg-item"><div class="leg-dot" style="border:3px solid #ff0000; background:rgba(255,0,0,0.2)"></div>不可</div>
+    <div class="leg-item"><div class="leg-sq"></div>敵ガイド</div>
+</div>
+
+<script>
+    const container = document.getElementById('game-container'), warningOverlay = document.getElementById('warning-overlay'), trashBtn = document.getElementById('trash-can'), whiteout = document.getElementById('whiteout');
+    const aiPanel = document.getElementById('ai-panel'), aiInput = document.getElementById('api-key-input'), aiLoading = document.getElementById('ai-loading');
+    const COLS = 8, ROWS = 9;
+    const DIRS_4 = [[0,-1],[0,1],[-1,0],[1,0]]; 
+
+    let pieces = [], history = [{p:[]}], hIdx = 0, isAnimating = false, draggedPieceId = null, aiBestMove = null;
+
+    function init() {
+        for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) {
+            const dot = document.createElement('div'); dot.className = 'point';
+            dot.style.left = (5 + (x / 7) * 90) + '%'; dot.style.top = (5 + (y / 8) * 90) + '%';
+            container.appendChild(dot);
+        }
+        setupEvents();
+        const savedKey = localStorage.getItem('gemini_api_key');
+        if(savedKey) aiInput.value = savedKey;
+    }
+
+    /* API設定関連 */
+    function openSettings() { aiPanel.style.display = 'block'; }
+    function closeSettings() { aiPanel.style.display = 'none'; }
+    function saveApiKey() {
+        localStorage.setItem('gemini_api_key', aiInput.value);
+        alert("APIキーを保存しました。");
+        closeSettings();
+    }
+
+    async function askAI() {
+        const apiKey = localStorage.getItem('gemini_api_key');
+        if (!apiKey) { alert("先に⚙️設定からAPIキーを入力してください。"); openSettings(); return; }
+        
+        const bluePiece = pieces.find(p => p.side === 'blue');
+        if (!bluePiece) { alert("盤面に自駒（車）を配置してください。"); return; }
+
+        aiLoading.style.display = 'flex';
+        
+        const boardState = pieces.map(p => `${p.side==='blue'?'自':'敵'}${p.type}(${p.x},${p.y})`).join(', ');
+        const promptText = `シャンチー解析。横8x縦9。左上(0,0)。自車(${bluePiece.x},${bluePiece.y})。他：${boardState}。最善手：(x,y)形式で回答し、理由も日本語で短く述べて。`;
+
+        // エンドポイントをより安定した v1beta に固定
+        const url = "https://googleapis.com" + apiKey.trim();
+
+        try {
+            const response = await fetch(url, {
+                method: 'POST',
+                // ブラウザのプリフライト（事前チェック）を避けるため、敢えてシンプルなヘッダーにする
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    contents: [{
+                        parts: [{ text: promptText }]
+                    }]
+                })
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error?.message || "通信エラー");
+            }
+
+            const data = await response.json();
+            
+            // レスポンスの解析（Gemini APIの正しい階層を指定）
+            if (data.candidates && data.candidates[0].content && data.candidates[0].content.parts) {
+                const text = data.candidates[0].content.parts[0].text;
+                
+                // 座標を抽出
+                const match = text.match(/最善手[:：]\(?(\d)[,，](\d)\)?/);
+                if (match) {
+                    aiBestMove = { x: parseInt(match[1]), y: parseInt(match[2]) };
+                    render();
+                }
+                alert("AIの助言：\n" + text);
+            } else {
+                throw new Error("AIから有効な回答が得られませんでした。");
+            }
+        } catch (e) {
+            console.error("AI連携エラー:", e);
+            alert("通信失敗：ブラウザのセキュリティ設定またはAPIキーを確認してください。\n\n【解決策】Google Chromeの拡張機能「Allow CORS」などを使うか、VS CodeのLive Serverで実行すると解決する場合があります。\n\n詳細: " + e.message);
+        } finally {
+            aiLoading.style.display = 'none';
+        }
+    }
+
+
+    function setupEvents() {
+        document.querySelectorAll('.palette-item').forEach(el => el.onpointerdown = (e) => !isAnimating && handleStart(e, el.dataset.side, el.dataset.type));
+        document.getElementById('setting-btn').onclick = openSettings;
+        document.getElementById('ai-btn').onclick = askAI;
+        trashBtn.onclick = () => { if (!isAnimating && confirm("全削除しますか？")) { pieces = []; aiBestMove = null; saveH(); render(); } };
+        document.getElementById('undo-btn').onclick = () => !isAnimating && hIdx > 0 && (hIdx--, applyH());
+        document.getElementById('redo-btn').onclick = () => !isAnimating && hIdx < history.length - 1 && (hIdx++, applyH());
+        window.onpointermove = (e) => !isAnimating && handleMove(e);
+        window.onpointerup = (e) => !isAnimating && handleEnd(e);
+    }
+
+    function saveH() { history = history.slice(0, hIdx + 1); history.push({ p: JSON.parse(JSON.stringify(pieces)) }); hIdx++; }
+    function applyH() { pieces = JSON.parse(JSON.stringify(history[hIdx].p)); aiBestMove = null; render(); }
+
+    function handleStart(e, s, t, id = null) {
+        e.preventDefault(); draggedPieceId = id; const pD = pieces.find(p => p.id === id);
+        window.activeDrag = { side: s, type: t, id, startX: pD ? pD.x : -1, startY: pD ? pD.y : -1, element: createGhost(t, s, e.clientX, e.clientY) };
+        aiBestMove = null; render(); if (s === 'red' && id !== null) showEnemyGuide(pD);
+    }
+
+    function createGhost(t, s, x, y) {
+        const g = document.createElement('div'); g.className = `piece-ui ${s}`;
+        g.innerText = t; g.style.position = 'fixed'; g.style.left = x + 'px'; g.style.top = y + 'px'; g.style.transform = 'translate(-50%, -50%) scale(1.2)'; g.style.zIndex = '1000'; g.style.pointerEvents = 'none';
+        document.body.appendChild(g); return g;
+    }
+
+    function handleMove(e) { if (!window.activeDrag) return; window.activeDrag.element.style.left = e.clientX + 'px'; window.activeDrag.element.style.top = e.clientY + 'px'; }
+
+    function handleEnd(e) {
+        if (!window.activeDrag) return;
+        const rect = container.getBoundingClientRect(), tr = trashBtn.getBoundingClientRect(); window.activeDrag.element.remove();
+        if (e.clientX >= tr.left && e.clientX <= tr.right && e.clientY >= tr.top && e.clientY <= tr.bottom) {
+            if (window.activeDrag.id) { pieces = pieces.filter(p => p.id !== window.activeDrag.id); saveH(); }
+        } else {
+            const x = Math.round((((e.clientX - rect.left) / rect.width) - 0.05) / 0.9 * 7), y = Math.round((((e.clientY - rect.top) / rect.height) - 0.05) / 0.9 * 8);
+            if (x >= 0 && x < COLS && y >= 0 && y < ROWS) {
+                if(!(window.activeDrag.id && window.activeDrag.startX===x && window.activeDrag.startY===y)){
+                    if (window.activeDrag.side === 'blue') pieces = pieces.filter(p => p.side !== 'blue');
+                    pieces = pieces.filter(p => !(p.x === x && p.y === y) && p.id !== window.activeDrag.id);
+                    pieces.push({ id: window.activeDrag.id || Date.now(), side: window.activeDrag.side, type: window.activeDrag.type, x, y });
+                    saveH();
+                    if (window.activeDrag.side === 'blue') checkDefeat(pieces.find(p => p.side === 'blue'));
+                }
+            }
+        }
+        window.activeDrag = null; draggedPieceId = null; render();
+    }
+
+    function checkDefeat(blue) {
+        if (!blue) return; const amap = getAttackMap(pieces, 'red');
+        if (amap.has(blue.x + ',' + blue.y)) {
+            isAnimating = true; warningOverlay.style.display = 'flex'; document.body.classList.add('shaking');
+            setTimeout(() => {
+                warningOverlay.style.display = 'none'; document.body.classList.remove('shaking');
+                pieces = pieces.filter(p => p.side !== 'blue'); isAnimating = false; saveH(); render();
+            }, 600);
+        }
+    }
+
+    function getAttackMap(pList, side = 'red', singlePiece = null) {
+        const amap = new Set(); const targets = singlePiece ? [singlePiece] : pList.filter(p => p.side === side);
+        targets.forEach(p => {
+            const add = (nx, ny) => { if (nx >= 0 && nx < COLS && ny >= 0 && ny < ROWS) amap.add(nx + ',' + ny); };
+            const check = (nx, ny) => pList.find(o => o.x === nx && o.y === ny);
+            if (p.type === '車' || p.type === '将') DIRS_4.forEach(([dx, dy]) => { let tx=p.x, ty=p.y; for (let i = 1; i < 10; i++) { tx+=dx; ty+=dy; if (tx < 0 || tx >= COLS || ty < 0 || ty >= ROWS) break; add(tx, ty); if (check(tx, ty)) break; if(p.type==='将') break;} });
+            if (p.type === '砲') DIRS_4.forEach(([dx, dy]) => { let tx=p.x, ty=p.y, c = 0; for (let i = 1; i < 10; i++) { tx+=dx; ty+=dy; if (tx < 0 || tx >= COLS || ty < 0 || ty >= ROWS) break; if (c === 0) { if (check(tx, ty)) c = 1; } else { add(tx, ty); if (check(tx, ty)) break; } } });
+            if (p.type === '馬') [[1,-2],[-1,-2],[1,2],[-1,2],[2,-1],[-2,-1],[2,1],[-2,1]].forEach(([dx,dy]) => { let lx = p.x + (Math.abs(dx)===2 ? dx/2 : 0), ly = p.y + (Math.abs(dy)===2 ? dy/2 : 0); if (!check(lx, ly)) add(p.x + dx, p.y + dy); });
+            if (p.type === '象') [[-2,-2],[2,-2],[-2,2],[2,2]].forEach(([dx,dy]) => { if (!check(p.x + dx / 2, p.y + dy / 2)) add(p.x + dx, p.y + dy); });
+            if (p.type === '士') [[-1,-1],[1,-1],[-1,1],[1,1]].forEach(([dx,dy]) => add(p.x + dx, p.y + dy));
+            if (p.type === '卒') DIRS_4.forEach(([dx,dy]) => add(p.x+dx, p.y+dy));
+        });
+        return amap;
+    }
+
+    function showEnemyGuide(p) {
+        const amap = new Set(); const check = (nx, ny) => pieces.find(o => o.x === nx && o.y === ny);
+        const addG = (nx, ny) => { if (nx >= 0 && nx < COLS && ny >= 0 && ny < ROWS) amap.add(nx + ',' + ny); };
+        if (p.type === '砲') {
+            DIRS_4.forEach(([dx, dy]) => {
+                let j = false; let tx=p.x, ty=p.y; for (let i = 1; i < 10; i++) {
+                    tx+=dx; ty+=dy; if (tx < 0 || tx >= COLS || ty < 0 || ty >= ROWS) break;
+                    const t = check(tx, ty); if (!j) { if (!t) addG(tx, ty); else j = true; } else { if (t && t.side === 'blue') addG(tx, ty); if(t) break; }
+                }
+            });
+        } else { getAttackMap(pieces, 'red', p).forEach(pos => amap.add(pos)); }
+        amap.forEach(pos => {
+            const [gx, gy] = pos.split(',').map(Number); const m = document.createElement('div'); m.className = 'marker guide';
+            m.style.left = (5 + (gx / 7) * 90) + '%'; m.style.top = (5 + (gy / 8) * 90) + '%'; container.appendChild(m);
+        });
+    }
+
+    function render() {
+        container.querySelectorAll('.piece, .marker').forEach(el => el.remove());
+        const amap = getAttackMap(pieces, 'red'), blue = pieces.find(p => p.side === 'blue');
+        if (aiBestMove) {
+            const m = document.createElement('div'); m.className = 'marker ai-best';
+            m.style.left = (5 + (aiBestMove.x / 7) * 90) + '%'; m.style.top = (5 + (aiBestMove.y / 8) * 90) + '%';
+            container.appendChild(m);
+        }
+        pieces.forEach(p => {
+            if (p.id === draggedPieceId) return;
+            const el = document.createElement('div'); el.className = 'piece piece-ui ' + p.side; el.dataset.id = p.id;
+            if (p.side === 'blue' && amap.has(p.x + ',' + p.y)) el.style.boxShadow = "0 0 15px #f00";
+            el.innerText = p.type; el.style.left = (5 + (p.x / 7) * 90) + '%'; el.style.top = (5 + (p.y / 8) * 90) + '%';
+            el.onpointerdown = (e) => !isAnimating && handleStart(e, p.side, p.type, p.id); container.appendChild(el);
+        });
+        if (blue && !isAnimating) calculateMoves(blue);
+    }
+
+    function calculateMoves(car) {
+        DIRS_4.forEach(([dx, dy]) => {
+            let tx = car.x, ty = car.y;
+            for (let i = 1; i < 10; i++) {
+                tx += dx; ty += dy; if (tx < 0 || tx >= COLS || ty < 0 || ty >= ROWS) break;
+                const t = pieces.find(p => p.x === tx && p.y === ty);
+                if (t?.side === 'blue') break;
+                let sim = JSON.parse(JSON.stringify(pieces));
+                if (t?.side === 'red') { sim = sim.filter(p => p.id !== t.id); }
+                sim = sim.map(p => p.side === 'blue' ? { ...p, x: tx, y: ty } : p);
+                const safe = !getAttackMap(sim, 'red').has(tx + ',' + ty);
+                let mType = safe ? (pieces.find(p=>p.x===tx&&p.y===ty&&p.side==='red') ? "best" : "safe") : "danger";
+                if (safe && !pieces.find(p=>p.x===tx&&p.y===ty)) {
+                    let aim = false; DIRS_4.forEach(([adx, ady]) => {
+                        let ax = tx, ay = ty; for (let j = 1; j < 11; j++) {
+                            ax += adx; ay += ady; if (ax < 0 || ax >= COLS || ay < 0 || ay >= ROWS) break;
+                            const nt = sim.find(p => p.x === ax && p.y === ay);
+                            if (nt?.side === 'red') {
+                                let sim2 = sim.filter(p => p.id !== nt.id).map(p => p.side === 'blue' ? { ...p, x: ax, y: ay } : p);
+                                if (!getAttackMap(sim2, 'red').has(ax + ',' + ay)) aim = true; break;
+                            } else if (nt?.side === 'blue') break;
+                        }
+                    });
+                    if (aim) mType = "aim";
+                }
+                const m = document.createElement('div'); m.className = 'marker ' + mType;
+                m.style.left = (5 + (tx / 7) * 90) + '%'; m.style.top = (5 + (ty / 8) * 90) + '%'; container.appendChild(m);
+                if (t) break;
+            }
+        });
+    }
+    init();
+</script>
+</body>
+</html>
