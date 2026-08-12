@@ -1,11 +1,41 @@
-<!-- VERSION: v2.9.0 (Anti-Text-Selection & Mobile Optimization) -->
+<!-- VERSION: v3.0.5 (State Retention via LocalStorage) -->
 <!DOCTYPE html>
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>シャンチー v2.9.0 Mobile-Pro</title>
+    <title>シャンチー v3.0.5 Mobile-Pro</title>
     <style>
+        /* ★書き換え：ボタンを圧迫しないように横幅を制限したスタイル */
+        .combo-popup {
+            font-size: 22px; /* 少しだけ基本サイズをシャープに */
+            font-weight: 900;
+            font-family: 'Impact', sans-serif;
+            color: #f1c40f;
+            text-shadow: 0 0 6px rgba(0,0,0,0.8), 0 0 15px #f39c12;
+            pointer-events: none;
+            white-space: nowrap;
+            opacity: 0;
+            transition: opacity 0.1s ease;
+            
+            /* ★追加：ボタンを絶対に圧迫しないための防壁 */
+            max-width: calc(100% - 220px); /* ボタン5個分の幅を確実に確保して残りを最大幅にする */
+            overflow: hidden;
+            text-overflow: ellipsis; /* 万が一溢れてもボタンを潰さず、文字の末尾を「...」にする */
+        }
+        .combo-popup.critical {
+            color: #ff3838;
+            text-shadow: 0 0 6px rgba(0,0,0,0.8), 0 0 20px #ff0000;
+        }
+        .combo-popup.show {
+            opacity: 1;
+        }
+        /* ★追加：将を撃破できる瞬間の妖しい紫色の輝き */
+        .combo-popup.awake-style {
+            color: #bf5af2 !important;
+            text-shadow: 0 0 6px rgba(0,0,0,0.8), 0 0 20px #bf5af2 !important;
+        }
+
         :root {
             --board-bg: #f5deb3;
             --river-bg: rgba(100, 180, 255, 0.25);
@@ -83,7 +113,7 @@
         .marker.guide { width: 24px; height: 24px; border-radius: 3px; border: 1.5px solid rgba(160, 160, 160, 0.8); background: rgba(200, 200, 200, 0.2); }
 
         #top-controls { width: 90vw; max-width: 360px; display: flex; justify-content: flex-end; gap: 8px; margin-bottom: 5px; margin-top: 2px; }
-        .ctrl-btn { font-size: 18px; width: 42px; height: 42px; border-radius: 8px; display: flex; align-items: center; justify-content: center; cursor: pointer; border: 1px solid rgba(255,255,255,0.2); color: white; background: #555; transition: all 0.2s; touch-action: manipulation; }
+        .ctrl-btn { font-size: 18px; width: 42px; height: 42px; border-radius: 8px; display: flex; align-items: center; justify-content: center; cursor: pointer; border: 1px solid rgba(255,255,255,0.2); color: white; background: #555; transition: all 0.2s; touch-action: manipulation; flex-shrink: 0; }
         #awake-btn.active { background: #9b59b6; box-shadow: 0 0 15px #9b59b6; }
         #taiko-btn.active { background: #f1c40f; box-shadow: 0 0 15px #f1c40f; }
         #palette { margin-top: 8px; display: flex; gap: 6px; background: rgba(255,255,255,0.1); padding: 10px; border-radius: 10px; flex-wrap: wrap; justify-content: center; width: 90vw; max-width: 360px; box-sizing: border-box; }
@@ -97,13 +127,18 @@
 <div id="warning-overlay"><div class="warning-text">WARNING</div></div>
 <div id="drum-cutin">🥁</div>
 
+<!-- ★書き換え：top-controlsの中に、 predict-box を追加 -->
 <div id="top-controls">
+    <!-- 🔥ボタンの左隣にスコア表示枠を滑り込ませる -->
+    <div id="predict-box" class="combo-popup" style="margin-right: auto; padding-left: 5px; align-self: center;"></div>
+    
     <div id="awake-btn" class="ctrl-btn">🔥</div>
     <div id="taiko-btn" class="ctrl-btn">🥁</div>
     <div id="undo-btn" class="ctrl-btn" style="background:#3498db">⟲</div>
     <div id="redo-btn" class="ctrl-btn" style="background:#3498db">⟳</div>
     <div id="trash-can" class="ctrl-btn" style="background:#e74c3c">🗑️</div>
 </div>
+
 
 <div id="game-container"><div id="board-grid"></div><div id="river"></div></div>
 
@@ -126,6 +161,15 @@
     <div class="leg-item"><div class="leg-sq"></div>敵ガイド</div>
 </div>
 
+<!-- ★追加：凡例（#legend）のすぐ下に配置 -->
+<div id="trash-guide" style="margin-top: 10px; display: grid; grid-template-columns: auto 1fr; gap: 0 4px; justify-content: center; font-size: 11px; color: #b0bec5; width: 95vw; max-width: 380px; line-height: 1.6; letter-spacing: 0.5px; opacity: 0.85; margin-left: auto; margin-right: auto;">
+    <div style="text-align: right;">🗑️ボタン：</div>
+    <div style="text-align: left;">タップで【盤面のみクリア】</div>
+    <div></div> <!-- 左列の空欄（2行目） -->
+    <div style="text-align: left;">長押しで【完全クリア（履歴含)】</div>
+</div>
+
+
 <script>
     const container = document.getElementById('game-container'), warningOverlay = document.getElementById('warning-overlay'), drumCutin = document.getElementById('drum-cutin'), trashBtn = document.getElementById('trash-can'), whiteout = document.getElementById('whiteout');
     const COLS = 8, ROWS = 9;
@@ -143,6 +187,27 @@
             container.appendChild(dot);
         }
         setupEvents();
+
+        // ★追加：ローカルストレージから前回の状態を復元
+        const savedState = localStorage.getItem('xiangqi_sim_state');
+        if (savedState) {
+            try {
+                const state = JSON.parse(savedState);
+                history = state.history || [{p:[], t:false, a:false}];
+                hIdx = state.hIdx !== undefined ? state.hIdx : history.length - 1;
+                
+                const current = history[hIdx];
+                pieces = JSON.parse(JSON.stringify(current.p));
+                isTaiko = current.t;
+                isAwake = current.a;
+            } catch (e) {
+                console.error("セーブデータの復元に失敗:", e);
+                localStorage.removeItem('xiangqi_sim_state');
+            }
+        }
+
+        render();
+        updateUI(); // 画面ボタンの状態を同期
         setInterval(animatePlasma, 80);
     }
 
@@ -183,15 +248,71 @@
         history = history.slice(0, hIdx + 1); 
         history.push({ p: JSON.parse(JSON.stringify(pieces)), t: isTaiko, a: isAwake }); 
         hIdx++; updateUI();
+
+        // ★追加：履歴とインデックスを丸ごとセーブ
+        localStorage.setItem('xiangqi_sim_state', JSON.stringify({ history, hIdx }));
     }
+
     function applyH() { 
         const s = history[hIdx]; pieces = JSON.parse(JSON.stringify(s.p)); isTaiko = s.t; isAwake = s.a; 
         render(); updateUI();
+
+        // ★追加：戻した（進めた）状態をセーブ
+        localStorage.setItem('xiangqi_sim_state', JSON.stringify({ history, hIdx }));
     }
+
 
     function setupEvents() {
         document.querySelectorAll('.palette-item').forEach(el => el.onpointerdown = (e) => !isAnimating && handleStart(e, el.dataset.side, el.dataset.type));
-        trashBtn.onclick = () => { if (!isAnimating && confirm("全削除しますか？")) { pieces = []; isTaiko = false; isAwake = false; saveH(); render(); } };
+        // ★書き換え：setupEvents内のtrashBtnに関連する処理を以下に丸ごと差し替え
+        let trashTimer = null;
+        let isLongPress = false;
+
+        // タッチが始まったとき（指を置いたとき）
+        trashBtn.onpointerdown = (e) => {
+            if (isAnimating) return;
+            isLongPress = false;
+            
+            // 1秒（1000ミリ秒）後に長押し判定を実行
+            trashTimer = setTimeout(() => {
+                isLongPress = true;
+                // 視覚的に長押しが成功したことを伝えるため、ボタンの色を一時的に白くフラッシュさせる
+                trashBtn.style.background = "#fff";
+                trashBtn.style.color = "#000";
+                
+                if (confirm("【完全リセット】\nこれまでの履歴もセーブデータもすべて完全に消去しますか？")) {
+                    pieces = []; isTaiko = false; isAwake = false;
+                    history = [{p:[], t:false, a:false}];
+                    hIdx = 0;
+                    localStorage.removeItem('xiangqi_sim_state'); // ストレージも完全削除
+                    updateUI(); render();
+                    alert("すべてのデータを完全初期化しました。");
+                }
+                // ボタンの色を元に戻す
+                trashBtn.style.background = "#e74c3c";
+                trashBtn.style.color = "#fff";
+            }, 1000);
+        };
+
+        // 指が離れたとき（タップ・または長押し終了）
+        trashBtn.onpointerup = () => {
+            clearTimeout(trashTimer);
+            // 長押しにならなかった場合（普通の短いタップの場合）は盤面クリアを実行
+            if (!isLongPress && !isAnimating) {
+                if (confirm("盤面をクリアしますか？\n（「一手戻る ⟲」で元の配置に戻せます）")) {
+                    pieces = []; isTaiko = false; isAwake = false;
+                    saveH(); // 空の盤面を履歴の新しい1手として保存
+                    render();
+                }
+            }
+        };
+
+        // 指がボタンの外に流れていって離れたときの保険
+        trashBtn.onpointercancel = trashBtn.onpointerleave = () => {
+            clearTimeout(trashTimer);
+        };
+
+
         document.getElementById('undo-btn').onclick = () => !isAnimating && hIdx > 0 && (hIdx--, applyH());
         document.getElementById('redo-btn').onclick = () => !isAnimating && hIdx < history.length - 1 && (hIdx++, applyH());
         document.getElementById('taiko-btn').onclick = () => { if (!isAnimating) { isTaiko = !isTaiko; if (isTaiko) { drumCutin.classList.add('drum-show'); setTimeout(() => drumCutin.classList.remove('drum-show'), 1000); } saveH(); render(); } };
@@ -213,7 +334,75 @@
         document.body.appendChild(g); return g;
     }
 
-    function handleMove(e) { if (!window.activeDrag) return; window.activeDrag.element.style.left = e.clientX + 'px'; window.activeDrag.element.style.top = e.clientY + 'px'; if (isAwake && window.activeDrag.side === 'blue') createZap(e.clientX, e.clientY, false); }
+    // グローバルに変数を1つ追加（スクリプトの一番上などの適当な場所に置いてください）
+    let lastHoveredKey = "";
+
+    function handleMove(e) { 
+        if (!window.activeDrag) return; 
+        window.activeDrag.element.style.left = e.clientX + 'px'; 
+        window.activeDrag.element.style.top = e.clientY + 'px'; 
+        if (isAwake && window.activeDrag.side === 'blue') createZap(e.clientX, e.clientY, false); 
+
+        // ドラッグ中の指の下にあるマスを計算
+        const rect = container.getBoundingClientRect();
+        const x = Math.round((((e.clientX - rect.left) / rect.width) - 0.05) / 0.9 * 7);
+        const y = Math.round((((e.clientY - rect.top) / rect.height) - 0.05) / 0.9 * 8);
+        const currentKey = x + "," + y;
+
+        if (currentKey !== lastHoveredKey) {
+            lastHoveredKey = currentKey;
+            
+            const markers = Array.from(document.querySelectorAll('.marker'));
+            const targetMarker = markers.find(m => m.dataset.gx == x && m.dataset.gy == y);
+            const pBox = document.getElementById('predict-box');
+            
+            if (targetMarker && targetMarker.dataset.pts && parseInt(targetMarker.dataset.pts) > 0) {
+                const pts = parseInt(targetMarker.dataset.pts);
+                
+                // この移動で「将」を撃破して次手で覚醒モードになるかチェック
+                let willAwake = false;
+                
+                // 1) 太鼓モード時の経路上の将チェック
+                if (isTaiko) {
+                    const dx = Math.sign(x - window.activeDrag.startX), dy = Math.sign(y - window.activeDrag.startY);
+                    if (dx !== 0 || dy !== 0) {
+                        let tx = window.activeDrag.startX, ty = window.activeDrag.startY;
+                        while (tx !== x || ty !== y) {
+                            tx += dx; ty += dy;
+                            const p = pieces.find(p => p.x === tx && p.y === ty && p.side === 'red');
+                            if (p && p.type === '将') { willAwake = true; break; }
+                        }
+                    }
+                // 2) 覚醒モード時の十字雷撃範囲の将チェック
+                } else if (isAwake) {
+                    const targets = pieces.filter(p => p.side === 'red' && (p.x === x || p.y === y));
+                    if (targets.some(p => p.type === '将')) willAwake = true;
+                // 3) 通常移動時の移動先の将チェック
+                } else {
+                    const p = pieces.find(p => p.x === x && p.y === y && p.side === 'red');
+                    if (p && p.type === '将') willAwake = true;
+                }
+
+                // ベースのスタイルクラスを付与
+                pBox.className = 'combo-popup show';
+                if (pts >= 50) pBox.classList.add('critical');
+                
+                // ★修正：将を倒せるマスなら紫色（覚醒カラー）に染める、それ以外は通常（黄色/赤）
+                if (willAwake) {
+                    pBox.classList.add('awake-style');
+                }
+                
+                // 文字数を最短にするため、数字とPTSのみを表示
+                pBox.innerText = `${pts} PTS`;
+                
+            } else {
+                pBox.classList.remove('show');
+            }
+        }
+    }
+
+
+
 
     function handleEnd(e) {
         if (!window.activeDrag) return;
@@ -238,10 +427,19 @@
                             const t = pieces.find(p => p.x === x && p.y === y && p.side === 'red'); 
                             if (t) { if (t.type === '将') killedGen = true; triggerBlast(x, y, t.type === '将' ? 'purple' : 'gold'); }
                         }
+                        // 【修正後】十字雷撃の巻き込みでも「将」を判定するコード
                         if (isAwake) { 
                             triggerThunderbolt(x, y); 
-                            pieces.filter(p => p.side === 'red' && (p.x === x || p.y === y)).forEach(p => triggerBlast(p.x, p.y, 'purple'));
-                            pieces = pieces.filter(p => !(p.side === 'red' && (p.x === x || p.y === y))); isAwake = false; 
+                            // 十字の範囲（同じ列、または同じ行）にいる敵を抽出
+                            const targets = pieces.filter(p => p.side === 'red' && (p.x === x || p.y === y));
+                            targets.forEach(p => {
+                                // ★修正点：巻き込んだ敵の中に「将」がいたらフラグを立てる
+                                if (p.type === '将') killedGen = true;
+                                triggerBlast(p.x, p.y, p.type === '将' ? 'purple' : 'purple'); 
+                            });
+                            // 対象の敵を盤面から削除
+                            pieces = pieces.filter(p => !(p.side === 'red' && (p.x === x || p.y === y))); 
+                            isAwake = false; 
                         }
                     }
                     pieces = pieces.filter(p => !(p.x === x && p.y === y) && p.id !== window.activeDrag.id);
@@ -252,6 +450,15 @@
             }
         }
         window.activeDrag = null; draggedPieceId = null; render();
+        lastHoveredKey = "";
+        
+        // ★関数の最後に追加：ドラッグ終了時に予測表示を完全に消去・リセット
+        const pBox = document.getElementById('predict-box');
+        if (pBox) pBox.classList.remove('show');
+        window.activeDrag = null; 
+        draggedPieceId = null; 
+        lastHoveredKey = ""; // ホバー状態もリセット
+        render();
     }
 
     function checkDefeat(blue) {
@@ -319,23 +526,38 @@
     }
 
     function calculateMoves(car) {
+        const PTS = { '卒': 8, '士': 8, '象': 15, '馬': 20, '将': 100, '砲': 20, '車': 30 };
+
         DIRS_4.forEach(([dx, dy]) => {
             let tx = car.x, ty = car.y;
             for (let i = 1; i < 10; i++) {
                 tx += dx; ty += dy; if (tx < 0 || tx >= COLS || ty < 0 || ty >= ROWS) break;
                 const target = pieces.find(p => p.x === tx && p.y === ty);
                 if (!isTaiko && target?.side === 'blue') break;
+                
                 let sim = JSON.parse(JSON.stringify(pieces));
+                let gainScore = 0;
+
                 if (isTaiko) {
                     let sx = car.x, sy = car.y; while (sx !== tx || sy !== ty) {
                         sx += dx; sy += dy; const vIdx = sim.findIndex(p => p.x === sx && p.y === sy && p.side === 'red');
-                        if (vIdx !== -1) sim.splice(vIdx, 1);
+                        if (vIdx !== -1) { gainScore += PTS[sim[vIdx].type] || 0; sim.splice(vIdx, 1); }
                     }
-                } else if (target?.side === 'red') { sim = sim.filter(p => p.id !== target.id); }
-                if (isAwake) { sim = sim.filter(p => !(p.side === 'red' && (p.x === tx || p.y === ty))); }
+                } else if (target?.side === 'red') { 
+                    gainScore += PTS[target.type] || 0; 
+                    sim = sim.filter(p => p.id !== target.id); 
+                }
+
+                if (isAwake) { 
+                    const awakeTargets = sim.filter(p => p.side === 'red' && (p.x === tx || p.y === ty));
+                    awakeTargets.forEach(p => { gainScore += PTS[p.type] || 0; });
+                    sim = sim.filter(p => !(p.side === 'red' && (p.x === tx || p.y === ty))); 
+                }
+
                 sim = sim.map(p => p.side === 'blue' ? { ...p, x: tx, y: ty } : p);
                 const safe = !getAttackMap(sim, 'red').has(tx + ',' + ty);
                 let mType = safe ? (pieces.find(p=>p.x===tx&&p.y===ty&&p.side==='red') ? "best" : "safe") : "danger";
+                
                 if (safe && !pieces.find(p=>p.x===tx&&p.y===ty)) {
                     let aim = false; DIRS_4.forEach(([adx, ady]) => {
                         let ax = tx, ay = ty; for (let j = 1; j < 11; j++) {
@@ -349,12 +571,22 @@
                     });
                     if (aim) mType = "aim";
                 }
+
                 const m = document.createElement('div'); m.className = 'marker ' + mType;
-                m.style.left = (5 + (tx / 7) * 90) + '%'; m.style.top = (5 + (ty / 8) * 90) + '%'; container.appendChild(m);
+                m.style.left = (5 + (tx / 7) * 90) + '%'; m.style.top = (5 + (ty / 8) * 90) + '%';
+                
+                // ★追加：マーカーに座標とスコアの情報を記憶させる
+                m.dataset.gx = tx;
+                m.dataset.gy = ty;
+                m.dataset.pts = gainScore;
+
+                container.appendChild(m);
                 if (!isTaiko && target) break;
             }
         });
     }
+
+
     init();
 </script>
 </body>
