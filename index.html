@@ -1,10 +1,10 @@
-<!-- VERSION: v3.0.5 (State Retention via LocalStorage) -->
+<!-- VERSION: v3.0.7 (State Retention via LocalStorage) -->
 <!DOCTYPE html>
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>シャンチー v3.0.5 Mobile-Pro</title>
+    <title>シャンチー v3.0.7 Mobile-Pro</title>
     <style>
         /* ★書き換え：ボタンを圧迫しないように横幅を制限したスタイル */
         .combo-popup {
@@ -273,6 +273,9 @@
             if (isAnimating) return;
             isLongPress = false;
             
+            // ★重要：もし駒をドラッグした状態でゴミ箱に入ってきた場合は、長押しタイマーを起動しない
+            if (window.activeDrag) return;
+        
             // 1秒（1000ミリ秒）後に長押し判定を実行
             trashTimer = setTimeout(() => {
                 isLongPress = true;
@@ -297,6 +300,13 @@
         // 指が離れたとき（タップ・または長押し終了）
         trashBtn.onpointerup = () => {
             clearTimeout(trashTimer);
+
+            // ★核心の修正：もし「駒をドラッグしている最中」にゴミ箱の上で指が離れたなら、
+            // それは1駒削除の動作なので、盤面クリアのダイアログは完全に無視して終了する
+            if (window.activeDrag) {
+                return;
+            }
+            
             // 長押しにならなかった場合（普通の短いタップの場合）は盤面クリアを実行
             if (!isLongPress && !isAnimating) {
                 if (confirm("盤面をクリアしますか？\n（「一手戻る ⟲」で元の配置に戻せます）")) {
@@ -408,7 +418,10 @@
         if (!window.activeDrag) return;
         const rect = container.getBoundingClientRect(), tr = trashBtn.getBoundingClientRect(); window.activeDrag.element.remove();
         if (e.clientX >= tr.left && e.clientX <= tr.right && e.clientY >= tr.top && e.clientY <= tr.bottom) {
-            if (window.activeDrag.id) { pieces = pieces.filter(p => p.id !== window.activeDrag.id); saveH(); }
+            if (window.activeDrag.id) { 
+                pieces = pieces.filter(p => p.id !== window.activeDrag.id);
+                saveH();
+            }
         } else {
             const x = Math.round((((e.clientX - rect.left) / rect.width) - 0.05) / 0.9 * 7), y = Math.round((((e.clientY - rect.top) / rect.height) - 0.05) / 0.9 * 8);
             if (x >= 0 && x < COLS && y >= 0 && y < ROWS) {
